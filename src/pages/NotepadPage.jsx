@@ -102,10 +102,10 @@ export default function NotepadPage({ selectedId }) {
 
   return (
     <div className="flex h-full">
-      <section className="flex w-72 shrink-0 flex-col border-r border-stone-200 dark:border-stone-800" aria-label="Notes">
+      <section className={`flex w-full shrink-0 flex-col border-r border-stone-200 md:w-64 lg:w-72 dark:border-stone-800 ${selectedId ? 'max-md:hidden' : ''}`} aria-label="Notes">
         <div className="space-y-2 border-b border-stone-200 p-4 dark:border-stone-800">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">Notepad</h1>
+            <h1 className="text-lg font-semibold tracking-[-0.01em]">Notepad</h1>
             <button type="button" className="btn-primary" onClick={newNote}>+ New</button>
           </div>
           <input type="search" className="input" placeholder="Search notes…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search notes" />
@@ -123,7 +123,8 @@ export default function NotepadPage({ selectedId }) {
           {!notes.length && <li className="p-6 text-center text-sm text-stone-500">{q ? 'No notes match.' : 'No notes yet.'}</li>}
         </ul>
       </section>
-      <section className="min-w-0 flex-1" aria-label="Note editor">
+      <section className={`flex min-w-0 flex-1 flex-col ${selectedId ? '' : 'max-md:hidden'}`} aria-label="Note editor">
+        {selectedId && <a href="#/notepad" className="sticky top-0 z-10 flex items-center gap-1 border-b border-stone-200 bg-stone-50/95 px-4 py-2 text-sm font-medium text-stone-600 backdrop-blur md:hidden dark:border-stone-800 dark:bg-stone-950/95 dark:text-stone-300">‹ All notes</a>}
         {selectedId
           ? <Editor key={selectedId} id={selectedId}
               onSaved={(n) => setNotes((list) => [n, ...list.filter((x) => x.id !== n.id)])}

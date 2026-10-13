@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useToasts } from '../stores';
+import Icon from './Icon';
 
 export function Modal({ title, onClose, children, wide }) {
   const ref = useRef(null);
@@ -11,13 +12,13 @@ export function Modal({ title, onClose, children, wide }) {
     return () => { window.removeEventListener('keydown', onKey); prev?.focus?.(); };
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-stone-950/40 p-4 pt-12 backdrop-blur-[2px]"
+    <div className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto overscroll-contain bg-stone-950/40 p-0 sm:items-start sm:p-4 sm:pt-[10vh]"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div ref={ref} role="dialog" aria-modal="true" aria-label={title}
-        className={`card w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} p-5 shadow-2xl`}>
+        className={`dialog-in card w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-[92vh] overflow-y-auto rounded-b-none p-5 shadow-2xl sm:rounded-b-xl`}>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">{title}</h2>
-          <button type="button" className="btn-ghost px-2" onClick={onClose} aria-label="Close">✕</button>
+          <h2 className="text-lg font-semibold tracking-[-0.01em]">{title}</h2>
+          <button type="button" className="btn-ghost -mr-2 px-2" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
         {children}
       </div>
@@ -28,10 +29,10 @@ export function Modal({ title, onClose, children, wide }) {
 export function Toasts() {
   const { toasts, dismiss } = useToasts();
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col gap-2" aria-live="polite">
+    <div className="pointer-events-none fixed inset-x-3 bottom-3 z-50 flex flex-col items-end gap-2 sm:inset-x-auto sm:bottom-4 sm:right-4" aria-live="polite">
       {toasts.map((t) => (
         <button key={t.id} type="button" onClick={() => dismiss(t.id)}
-          className={`pointer-events-auto max-w-sm rounded-xl px-4 py-2.5 text-left text-sm font-medium shadow-lg ${t.kind === 'error' ? 'bg-red-600 text-white' : 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900'}`}>
+          className={`toast-in pointer-events-auto max-w-sm rounded-xl px-4 py-2.5 text-left text-sm font-medium shadow-lg ${t.kind === 'error' ? 'bg-red-600 text-white' : 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900'}`}>
           {t.text}
         </button>
       ))}
@@ -68,9 +69,9 @@ export function Field({ label, htmlFor, children, hint }) {
 
 export function Section({ title, description, children }) {
   return (
-    <section className="card p-5">
-      <h2 className="text-base font-bold">{title}</h2>
-      {description && <p className="mb-2 text-sm text-stone-500 dark:text-stone-400">{description}</p>}
+    <section className="card p-4 sm:p-5">
+      <h2 className="text-[15px] font-semibold tracking-[-0.005em]">{title}</h2>
+      {description && <p className="mt-0.5 mb-2 max-w-prose text-sm text-pretty text-stone-500 dark:text-stone-400">{description}</p>}
       <div className="mt-2 divide-y divide-stone-100 dark:divide-stone-800">{children}</div>
     </section>
   );
@@ -83,7 +84,7 @@ const PRIORITY_STYLES = {
 };
 
 export function PriorityChip({ priority }) {
-  return <span className={`chip ${PRIORITY_STYLES[priority]}`}>{priority.toLowerCase()}</span>;
+  return <span className={`chip ${PRIORITY_STYLES[priority]}`}>{priority[0] + priority.slice(1).toLowerCase()}</span>;
 }
 
 // Renders a character using the shared markup and animation CSS.

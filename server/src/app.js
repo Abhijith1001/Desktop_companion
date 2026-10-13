@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
@@ -9,6 +10,8 @@ const { schemas } = require('./validation');
 const { requireAuth, validate, errorHandler } = require('./middleware');
 const svc = require('./services/taskService');
 const { isHealthy } = require('./db');
+const { publicRoutes } = require('./routes/public');
+const { adminRoutes } = require('./routes/admin');
 
 const { HttpError } = svc;
 
@@ -51,6 +54,15 @@ function createApp({ rateLimits = true } = {}) {
     res.json({ token: signToken(user), user: publicUser(user) });
   });
   app.use('/api/auth', auth);
+
+  // ---------- no account needed: feedback, crash reports, announcements
+  app.use('/api/public', publicRoutes({ limiter }));
+
+  // ---------- admin panel (static page + API, off unless ADMIN_TOKEN is set)
+  app.use('/api/admin', adminRoutes({ limiter }));
+  app.use('/admin', (_req, res, next) => (config.adminToken ? next() : res.status(404).json({ error: 'Not found' })),
+    express.static(path.join(__dirname, '../admin'), { index: 'index.html', maxAge: 0 }));
+
 
   const api = express.Router();
   api.use(limiter(600, 15 * 60_000));

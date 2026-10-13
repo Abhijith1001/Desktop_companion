@@ -22,9 +22,9 @@ export default function CharactersPage() {
   const ids = Object.keys(window.CHARACTERS);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
       <header>
-        <h1 className="text-2xl font-bold">Characters</h1>
+        <h1 className="page-title">Characters</h1>
         <p className="text-sm text-stone-500">All characters share the same tasks and reminders — only their look, moves and voice differ.</p>
       </header>
 

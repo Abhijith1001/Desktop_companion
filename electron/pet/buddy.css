@@ -431,6 +431,19 @@
 /* Hungry: a sweat drop now and then */
 .buddy.hungry.idle .fx-sweat { display: inline; animation: b-fxDrip 1.6s 2s infinite; }
 
+/* ---- Stretch (Pomodoro break & wellness stretch) ---- */
+@keyframes b-stretchBob {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-7px) scaleY(1.1) scaleX(0.95); }
+}
+@keyframes b-stretchPaw {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-140deg) translateY(-8px); }
+}
+.buddy.stretch .jump { animation: b-stretchBob 2.4s ease-in-out infinite; }
+.buddy.stretch .arm, .buddy.stretch .leg.front { animation: b-stretchPaw 2.4s ease-in-out infinite; }
+.buddy.stretch #tail { animation: b-wag .8s ease-in-out infinite alternate; }
+
 /* ---- Seasons ---- */
 .buddy.season-halloween .deco-pumpkin { display: inline; }
 

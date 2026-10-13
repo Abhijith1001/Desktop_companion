@@ -145,4 +145,37 @@ module.exports = [
       `);
     },
   },
+  {
+    version: 4,
+    name: 'habits',
+    up(db) {
+      db.exec(`
+        CREATE TABLE habits (
+          id          TEXT PRIMARY KEY,
+          name        TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 200),
+          description TEXT NOT NULL DEFAULT '',
+          icon        TEXT NOT NULL DEFAULT '⭐',
+          color       TEXT NOT NULL DEFAULT '#e8994a',
+          frequency   TEXT NOT NULL DEFAULT 'daily',
+          target_days TEXT NOT NULL DEFAULT '[1,2,3,4,5,6,7]',
+          archived    INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0,1)),
+          sort_order  INTEGER NOT NULL DEFAULT 0,
+          created_at  TEXT NOT NULL,
+          updated_at  TEXT NOT NULL
+        );
+        CREATE INDEX idx_habits_sort ON habits(archived, sort_order);
+
+        CREATE TABLE habit_completions (
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          habit_id   TEXT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+          date       TEXT NOT NULL,
+          note       TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          UNIQUE (habit_id, date)
+        );
+        CREATE INDEX idx_habit_comp_date ON habit_completions(habit_id, date);
+      `);
+    },
+  },
 ];
+

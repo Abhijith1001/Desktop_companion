@@ -5,6 +5,7 @@ import { Section, Toggle, Field } from '../components/ui';
 import { navigate } from '../hooks/useRoute';
 import { allTimeZones } from '../utils/dates';
 import ShortcutInput from '../features/capture/ShortcutInput';
+import { ACCENTS, resolveAccent } from '../utils/accent';
 
 const UPDATE_TEXT = {
   idle: 'Not checked yet',
@@ -15,13 +16,54 @@ const UPDATE_TEXT = {
   ready: (u) => `Version ${u.version} is ready — restart to install`,
   error: (u) => `Update check failed: ${u.error}`,
   unsupported: 'Updates work in the installed app only',
+  store: 'Updates come from the Microsoft Store',
 };
+
+const THEMES = [
+  { id: 'system', label: 'Match Windows', icon: '🖥️' },
+  { id: 'light', label: 'Light', icon: '☀️' },
+  { id: 'dark', label: 'Dark', icon: '🌙' },
+];
+
+function AppearanceSection({ s, update }) {
+  const matched = resolveAccent('character', s.character);
+  const swatches = [{ id: 'character', name: `Match my buddy (${ACCENTS[matched].name})`, color: ACCENTS[matched].scale[5] },
+    ...Object.entries(ACCENTS).map(([id, a]) => ({ id, name: a.name, color: a.scale[5] }))];
+  return (
+    <Section title="Appearance" description="Make the app yours: colours follow your buddy unless you pick one.">
+      <div className="py-3">
+        <span className="label">Theme</span>
+        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Theme">
+          {THEMES.map((t) => (
+            <button key={t.id} type="button" role="radio" aria-checked={s.theme === t.id} onClick={() => update({ theme: t.id })}
+              className={`flex flex-col items-center gap-1 rounded-xl border-2 px-3 py-2.5 text-sm font-medium transition-colors ${s.theme === t.id ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20' : 'border-stone-200 hover:border-stone-300 dark:border-stone-700 dark:hover:border-stone-600'}`}>
+              <span className="text-xl" aria-hidden="true">{t.icon}</span>{t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="py-3">
+        <span className="label">Accent colour</span>
+        <div className="flex flex-wrap items-center gap-2.5" role="radiogroup" aria-label="Accent colour">
+          {swatches.map((w) => (
+            <button key={w.id} type="button" role="radio" aria-checked={s.accent === w.id} title={w.name} aria-label={w.name}
+              className="swatch" style={{ background: w.color }} onClick={() => update({ accent: w.id })}>
+              {w.id === 'character' ? '🐾' : s.accent === w.id ? '✓' : ''}
+            </button>
+          ))}
+        </div>
+      </div>
+      <Toggle label="Progress sign" description="Your buddy holds a little sign showing how many tasks are left today"
+        checked={s.progressSign} onChange={(v) => update({ progressSign: v })} />
+    </Section>
+  );
+}
 
 function UpdatesSection({ s, update }) {
   const [u, setU] = useState(null);
   useEffect(() => { api.updates.status().then(setU).catch(() => {}); return api.updates.onStatus(setU); }, []);
   const text = u && (typeof UPDATE_TEXT[u.state] === 'function' ? UPDATE_TEXT[u.state](u) : UPDATE_TEXT[u.state]);
-  const busy = !u || ['checking', 'downloading', 'unsupported'].includes(u.state);
+  const busy = !u || ['checking', 'downloading', 'unsupported', 'store'].includes(u.state);
   return (
     <Section title="Updates" description={u ? `You're on version ${u.current}.` : undefined}>
       <div className="py-3">
@@ -117,7 +159,7 @@ function WeatherSection({ s, update }) {
   const choose = (location) => { update({ weather: { location } }); setResults(null); setQuery(''); toast(`Weather set to ${location.name}`); };
 
   return (
-    <Section title="Weather" description="Your buddy shows rain, snow, fog or sunshine based on the weather where you are. Only the location you pick is sent to Open-Meteo (free, no account).">
+    <Section title="Weather" description="Your buddy shows rain, snow, fog or sunshine based on the weather where you are. Only the location you pick is sent to Open-Meteo (and to OpenStreetMap when searching for small places), both free with no account.">
       <Toggle label="Show local weather" checked={w.enabled} onChange={(v) => update({ weather: { enabled: v } })} />
       {w.enabled && (
         <>
@@ -218,8 +260,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <h1 className="text-2xl font-bold">Settings</h1>
+    <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
+      <h1 className="page-title">Settings</h1>
 
       <BuddyCareSection s={s} update={update} />
       <WeatherSection s={s} update={update} />
@@ -295,8 +337,19 @@ export default function SettingsPage() {
         {status && <p className="py-2 text-xs text-stone-500">{status.pending} scheduled · next {status.next ? new Date(status.next).toLocaleString() : '—'}{status.failed ? ` · ${status.failed} failed deliveries (see logs)` : ''}</p>}
       </Section>
 
+      <AppearanceSection s={s} update={update} />
+
       <Section title="Sound & voice">
         <Toggle label="Chime" checked={s.sound} onChange={(v) => update({ sound: v })} />
+        <div className="flex items-end gap-2 py-3">
+          <Field label="Chime style" htmlFor="chime">
+            <select id="chime" className="input" value={s.chimeStyle} disabled={!s.sound}
+              onChange={(e) => { update({ chimeStyle: e.target.value }); window.playChime(e.target.value, s.volume); }}>
+              {Object.entries(window.CHIMES).map(([id, c]) => <option key={id} value={id}>{c.name}</option>)}
+            </select>
+          </Field>
+          <button type="button" className="btn-outline" disabled={!s.sound} onClick={() => window.playChime(s.chimeStyle, s.volume)}>▶ Play</button>
+        </div>
         <div className="py-3">
           <label className="label" htmlFor="vol">Volume · {Math.round(s.volume * 100)}%</label>
           <input id="vol" type="range" min={0} max={1} step={0.05} className="w-full accent-brand-500" value={s.volume} onChange={(e) => update({ volume: Number(e.target.value) })} />
@@ -323,11 +376,6 @@ export default function SettingsPage() {
           <button type="button" className="btn-outline shrink-0" onClick={() => navigate('/welcome')}>Replay tour</button>
         </div>
         <div className="grid grid-cols-2 gap-4 py-3">
-          <Field label="Theme" htmlFor="theme">
-            <select id="theme" className="input" value={s.theme} onChange={(e) => update({ theme: e.target.value })}>
-              <option value="system">Match Windows</option><option value="light">Light</option><option value="dark">Dark</option>
-            </select>
-          </Field>
           <Field label="Default time zone" htmlFor="tz" hint={info && info.systemTimeZone !== s.timeZone ? `Windows is set to ${info.systemTimeZone}` : 'Used for new tasks'}>
             <select id="tz" className="input" value={s.timeZone} onChange={(e) => update({ timeZone: e.target.value })}>
               {zones.map((z) => <option key={z} value={z}>{z}</option>)}
@@ -339,6 +387,10 @@ export default function SettingsPage() {
       <UpdatesSection s={s} update={update} />
       <CaptureSection s={s} update={update} />
       <AiSection />
+
+      <Section title="Crash reports" description="Help fix bugs faster. Reports contain the error message, the code location, your app version and Windows version. No tasks, notes, bookmarks or personal files, and folder names are removed.">
+        <Toggle label="Send anonymous crash reports" checked={s.crashReports} onChange={(v) => update({ crashReports: v })} />
+      </Section>
 
       <Section title="Privacy & data" description="Your tasks and bookmarks are stored on this computer. Bookmarks are never synced. Cloud sync for tasks is optional (Account & sync).">
         <div className="flex flex-wrap gap-2 py-3">

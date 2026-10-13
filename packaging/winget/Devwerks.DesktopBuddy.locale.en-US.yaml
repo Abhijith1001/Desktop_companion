@@ -1,0 +1,25 @@
+PackageIdentifier: Devwerks.DesktopBuddy
+PackageVersion: 2.1.1
+PackageLocale: en-US
+Publisher: Devwerks
+PublisherUrl: https://github.com/Abhijith1001
+PublisherSupportUrl: https://github.com/Abhijith1001/Desktop_companion/issues
+PrivacyUrl: https://abhijith1001.github.io/Desktop_companion/privacy.html
+PackageName: Desktop Buddy
+PackageUrl: https://abhijith1001.github.io/Desktop_companion/
+License: MIT
+ShortDescription: An animated desktop pet that keeps your to-do list and reminds you when tasks are due.
+Description: |-
+  Desktop Buddy is a cute animated companion that walks along your Windows taskbar.
+  It keeps your tasks, supports repeating reminders, and runs to the middle of the
+  screen when something is due. Works offline; cloud sync is optional.
+Moniker: desktop-buddy
+Tags:
+  - desktop-pet
+  - reminders
+  - todo
+  - tasks
+  - productivity
+  - pomodoro
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

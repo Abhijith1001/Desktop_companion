@@ -31,6 +31,10 @@ const DEFAULTS = {
   pausedUntil: null,             // ISO; reminders held until then
   position: null,                // { x, displayId } last dropped position
   theme: 'system',               // system | light | dark
+  accent: 'character',           // character | amber | rose | violet | sky | emerald
+  chimeStyle: 'bells',           // see electron/pet/chimes.js
+  progressSign: true,
+  crashReports: false,           // opt-in: send anonymous crash reports to the sync server            // buddy holds a little sign with tasks left today
   followCursor: true,            // watch and sometimes chase the mouse cursor
   perchOnWindows: true,          // sometimes jump up and sit on top of the active window
   // Local weather (Open-Meteo). location: { name, lat, lon, country } or null.

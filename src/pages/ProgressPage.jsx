@@ -157,9 +157,9 @@ export default function ProgressPage() {
   if (!p) return null;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
       <header>
-        <h1 className="text-2xl font-bold">Progress</h1>
+        <h1 className="page-title">Progress</h1>
         <p className="text-sm text-stone-500">Every task you finish earns XP. Keep a daily streak going to help your buddy grow.</p>
       </header>
       <LevelCard p={p} settings={settings} />

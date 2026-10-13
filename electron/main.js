@@ -27,6 +27,8 @@ const { importLegacy } = require('./legacy');
 const { makeIcon } = require('./icon');
 const { createOnboarding } = require('./onboarding');
 const { createBuddyLife } = require('./buddyLife');
+const { createHabitService } = require('./services/habits');
+const { createCommunity } = require('./services/community');
 const dialogue = require('./dialogue');
 
 const APP_ID = 'com.devwerks.desktopbuddy';
@@ -46,11 +48,18 @@ if (!app.requestSingleInstanceLock()) {
 
 function start() {
   // Errors are logged, never turned into an automatic restart loop.
-  process.on('uncaughtException', (err) => log.error('uncaught exception', { error: err.message, stack: err.stack }));
-  process.on('unhandledRejection', (err) => log.error('unhandled rejection', { error: String(err && err.message || err) }));
+  // With the user's consent (Settings > Privacy) they are also reported to the server.
+  process.on('uncaughtException', (err) => {
+    log.error('uncaught exception', { error: err.message, stack: err.stack });
+    community?.reportCrash({ source: 'main', message: err.message, stack: err.stack });
+  });
+  process.on('unhandledRejection', (err) => {
+    log.error('unhandled rejection', { error: String(err && err.message || err) });
+    community?.reportCrash({ source: 'main', message: String(err && err.message || err), stack: err && err.stack });
+  });
 
   let db; let settings; let tasks; let engine; let sync; let presenter; let pet; let manager; let tray;
-  let bookmarks; let capture; let ai; let notes; let onboarding; let progress; let life; let updater;
+  let bookmarks; let capture; let ai; let notes; let onboarding; let progress; let life; let updater; let habits; let community;
 
   const characters = () => {
     const ctx = { window: {} };
@@ -133,7 +142,7 @@ function start() {
   }
 
   function registerShortcuts() {
-    for (const k of ['capture', 'ocr']) {
+    for (const k of ['capture', 'ocr', 'quickCapture']) {
       if (shortcutState[k]?.accelerator) { try { globalShortcut.unregister(shortcutState[k].accelerator); } catch { /* not registered */ } }
       shortcutState[k] = null;
     }
@@ -147,6 +156,9 @@ function start() {
     };
     reg('capture', c.shortcut, () => runCapture('selection'));
     if (c.ocrEnabled && c.ocrShortcut !== c.shortcut) reg('ocr', c.ocrShortcut, () => runCapture('ocr'));
+    reg('quickCapture', 'CommandOrControl+Shift+Space', () => {
+      manager.open('/quick-capture');
+    });
     manager && manager.send('capture:status', captureStatus());
   }
   const captureStatus = () => ({ platformSupported: process.platform === 'win32', shortcuts: { ...shortcutState }, busy: capture.busy });
@@ -293,6 +305,11 @@ function start() {
     });
     bookmarks = createBookmarkService({ db, onChange: () => manager && manager.send('bookmarks:changed') });
     notes = createNoteService({ db });
+    habits = createHabitService({ db });
+    community = createCommunity({
+      settings, log, appVersion: app.getVersion(),
+      onAnnouncements: (list) => manager && manager.send('announcements:changed', list),
+    });
     ai = createAi({ getKey: () => readSecret('anthropicKey'), setKey: (k) => writeSecret('anthropicKey', k), log });
     capture = createCapture({ clipboard, ClipboardItem, log, getOptions: () => settings.get('capture') });
     try {
@@ -347,7 +364,7 @@ function start() {
     // ---- IPC from the task manager window
     const handlers = createHandlers({
       tasks, settings, engine, sync, pet: () => pet, exportData, confirmDeleteAccount, previewBuddy,
-      bookmarks, ai, confirmClearBookmarks, notes, onboarding, progress, updater: () => updater, weather: life.weather, buddyCare: life,
+      bookmarks, ai, confirmClearBookmarks, notes, onboarding, progress, updater: () => updater, weather: life.weather, buddyCare: life, habits, community,
       copyText: (text) => clipboard.writeText(text),
       capture: {
         selection: (delay) => runCapture('selection', delay),
@@ -413,6 +430,11 @@ function start() {
     updater.start();
     life.start();
     sync.start();
+    community.start();
+    app.on('render-process-gone', (_e, _wc, d) => {
+      if (d.reason === 'clean-exit') return;
+      community.reportCrash({ source: 'renderer', message: `Renderer gone: ${d.reason} (exit ${d.exitCode})` });
+    });
     setInterval(checkBreak, 60_000);
 
     // Sleep, hibernate and lock: re-evaluate reminders straight away.
@@ -427,6 +449,10 @@ function start() {
     globalShortcut.register('Control+Alt+B', () => {
       if (pet.isVisible()) pet.hide(); else pet.show();
       onboarding.event('toggled');
+    });
+    // Global quick-capture: Ctrl+Shift+Space opens the Spotlight-style task popup
+    globalShortcut.register('Control+Shift+Space', () => {
+      manager.open('/quick-capture');
     });
     registerShortcuts();
   });

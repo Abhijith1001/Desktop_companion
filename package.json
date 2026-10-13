@@ -1,7 +1,7 @@
 {
   "name": "desktop-companion",
   "productName": "Desktop Buddy",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "A desktop pet companion with a task manager that walks onto your screen to remind you.",
   "main": "electron/main.js",
   "scripts": {
@@ -15,7 +15,9 @@
     "dist": "node scripts/make-icons.js && vite build && electron-builder --win",
     "server": "cd server && npm start",
     "test:e2e": "vite build && vitest run tests/e2e",
-    "icons": "node scripts/make-icons.js"
+    "icons": "node scripts/make-icons.js",
+    "dist:publish": "node scripts/make-icons.js && vite build && electron-builder --win --publish always",
+    "dist:store": "node scripts/make-icons.js && vite build && node scripts/build-store.js"
   },
   "build": {
     "appId": "com.devwerks.desktopbuddy",
@@ -67,7 +69,8 @@
       {
         "provider": "github",
         "owner": "Abhijith1001",
-        "repo": "Desktop_companion"
+        "repo": "Desktop_companion",
+        "releaseType": "release"
       }
     ]
   },

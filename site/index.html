@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Desktop Buddy</title>
+  <meta name="description" content="A cute animated pet that lives on your Windows taskbar, keeps your to-do list and runs over to remind you when something is due. Free, works offline.">
+  <meta property="og:title" content="Desktop Buddy: a pet that reminds you">
+  <meta property="og:description" content="A cute animated pet on your taskbar that keeps your tasks and reminds you on time. Free for Windows.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="favicon.png">
+  <link rel="stylesheet" href="buddy/buddy.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="#"><span aria-hidden="true">🐾</span> Desktop Buddy</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#faq">FAQ</a>
+      <a class="btn small" href="#download">Download</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">Free for Windows 10 &amp; 11</p>
+        <h1>A little friend who <span class="hl">never lets you forget.</span></h1>
+        <p class="lead">Desktop Buddy is an animated pet that walks along your taskbar, keeps your to-do list, and runs to the middle of your screen when something is due.</p>
+        <div class="cta">
+          <a class="btn primary big" id="download-btn" href="https://github.com/Abhijith1001/Desktop_companion/releases/latest">
+            ⬇ Download for Windows
+          </a>
+          <span class="cta-note" id="download-note">Free · no account needed · works offline</span>
+        </div>
+      </div>
+
+      <div class="stage" aria-label="Animated preview of the buddy on a taskbar">
+        <div class="screen">
+          <div class="window"><div class="dots"><i></i><i></i><i></i></div><div class="lines"><b></b><b></b><b class="short"></b></div></div>
+          <div class="bubble" id="bubble" aria-live="polite">
+            <div class="b-label">⏰ Reminder</div>
+            <div class="b-title">Submit weekly report</div>
+            <div class="b-actions"><button type="button" id="done-btn">Mark done</button><span>Snooze 10m</span></div>
+          </div>
+          <div class="walker" id="walker"><div id="buddy" class="buddy idle"></div></div>
+          <div class="taskbar"><span class="start">⊞</span><span class="tb-icons"><i></i><i></i><i></i></span><span class="clock" id="clock">9:30</span></div>
+        </div>
+        <div class="picker" role="radiogroup" aria-label="Pick a character" id="picker"></div>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <h2>Everything a good buddy does</h2>
+      <div class="grid">
+        <article class="card"><span class="icon">🐶</span><h3>Five characters</h3><p>A dog, two cats, a hero kid and a ranger, each with its own animations, moods and voice lines.</p></article>
+        <article class="card"><span class="icon">⏰</span><h3>Reminders you'll notice</h3><p>Your buddy runs to the centre of the screen with Done and Snooze buttons. One chime, never nagging.</p></article>
+        <article class="card"><span class="icon">🔁</span><h3>Repeating tasks</h3><p>Daily, weekly, chosen weekdays or every few days. Time zones and daylight saving are handled for you.</p></article>
+        <article class="card"><span class="icon">🔥</span><h3>Streaks &amp; rewards</h3><p>Finish tasks to earn treats, keep your streak and unlock outfits like a crown, a wizard hat or a halo.</p></article>
+        <article class="card"><span class="icon">🍅</span><h3>Focus &amp; wellness</h3><p>Pomodoro timer, habit tracker and gentle water and stretch breaks when you've been at it too long.</p></article>
+        <article class="card"><span class="icon">🔒</span><h3>Private by default</h3><p>Everything is stored on your PC. Cloud sync between computers is optional and only for tasks.</p></article>
+      </div>
+    </section>
+
+    <section class="steps">
+      <h2>Up and running in a minute</h2>
+      <ol>
+        <li><span>1</span><div><h3>Install</h3><p>Download and run the installer. No admin rights needed.</p></div></li>
+        <li><span>2</span><div><h3>Pick your buddy</h3><p>Choose a character, give it a name, and it walks onto your taskbar.</p></div></li>
+        <li><span>3</span><div><h3>Add a task</h3><p>Type “call mom tomorrow 6pm” and your buddy takes it from there.</p></div></li>
+      </ol>
+    </section>
+
+    <section class="faq" id="faq">
+      <h2>Questions</h2>
+      <details><summary>Is it really free?</summary><p>Yes. Desktop Buddy is free with no ads and no account required.</p></details>
+      <details><summary>Windows says “Windows protected your PC”. Is it safe?</summary><p>That message appears for new apps that haven't built up a download reputation yet. Click <b>More info → Run anyway</b>. You can also install it from the Microsoft Store or with <code>winget install Devwerks.DesktopBuddy</code>.</p></details>
+      <details><summary>Will it slow down my computer?</summary><p>No. The buddy is a small transparent window that animates with CSS, and it pauses itself when you hide it or the PC is idle.</p></details>
+      <details><summary>Does it work without internet?</summary><p>Yes. Tasks, reminders and the buddy all work offline. Internet is only used for optional sync, weather and updates.</p></details>
+      <details><summary>What happens to my data?</summary><p>It stays in a database on your computer. Read the <a href="privacy.html">privacy policy</a> for the details.</p></details>
+      <details><summary>How do I hide the buddy for a while?</summary><p>Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>B</kbd>. Reminders keep working while it's hidden.</p></details>
+    </section>
+
+    <section class="final" id="download">
+      <h2>Ready to meet your buddy?</h2>
+      <a class="btn primary big" id="download-btn-2" href="https://github.com/Abhijith1001/Desktop_companion/releases/latest">⬇ Download for Windows</a>
+      <p class="alt">Also on <code>winget install Devwerks.DesktopBuddy</code></p>
+    </section>
+  </main>
+
+  <footer>
+    <span>© <span id="year">2026</span> Devwerks</span>
+    <a href="privacy.html">Privacy</a>
+    <a href="https://github.com/Abhijith1001/Desktop_companion/issues">Report a problem</a>
+  </footer>
+
+  <script src="buddy/characters.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

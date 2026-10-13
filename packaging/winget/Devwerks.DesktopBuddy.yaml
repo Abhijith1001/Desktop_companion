@@ -1,0 +1,6 @@
+# winget version manifest. First submission: see RELEASING.md → winget.
+PackageIdentifier: Devwerks.DesktopBuddy
+PackageVersion: 2.1.1
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0

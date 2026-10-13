@@ -1,12 +1,13 @@
 // App updates from GitHub Releases via electron-updater.
 //   auto: download in the background, install on next quit (or "Restart now").
 //   ask:  tell the user a version is available and download only if they agree.
-// Only active in the packaged app; dev builds report "unsupported".
+// Only active in the packaged app; dev builds report "unsupported". The
+// Microsoft Store build (process.windowsStore) is updated by the Store instead.
 const CHECK_EVERY_MS = 6 * 60 * 60_000;
 
 function createUpdater({ app, dialog, settings, log, getWindow, onStatus = () => {} }) {
   let autoUpdater = null;
-  let status = { state: app.isPackaged ? 'idle' : 'unsupported', version: null, progress: null, error: null };
+  let status = { state: process.windowsStore ? 'store' : app.isPackaged ? 'idle' : 'unsupported', version: null, progress: null, error: null };
   let timer = null;
   let prompted = null; // version we've already asked about, so checks don't nag
 
@@ -28,7 +29,7 @@ function createUpdater({ app, dialog, settings, log, getWindow, onStatus = () =>
   }
 
   function start() {
-    if (!app.isPackaged) return;
+    if (!app.isPackaged || process.windowsStore) return;
     ({ autoUpdater } = require('electron-updater'));
     autoUpdater.logger = { info: (m) => log.info('updater', { m: String(m) }), warn: (m) => log.warn('updater', { m: String(m) }), error: (m) => log.error('updater', { m: String(m) }), debug() {} };
     autoUpdater.autoInstallOnAppQuit = true;

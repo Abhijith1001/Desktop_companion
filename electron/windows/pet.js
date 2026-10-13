@@ -512,6 +512,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     const isPaused = settings.get('buddyHidden') || !alive();
     send('pet:options', {
       animation: animationMode(), paused: isPaused, sound: s.sound, volume: s.volume, speech: s.speech, voice: s.voice,
+      chimeStyle: s.chimeStyle, progressSign: s.progressSign,
     });
   }
 
@@ -785,7 +786,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
       clampToDisplay();
     }
     if ('character' in patch || 'accessory' in patch) sendCharacter();
-    if (['animation', 'sound', 'volume', 'speech', 'voice'].some((k) => k in patch)) sendOptions();
+    if (['animation', 'sound', 'volume', 'speech', 'voice', 'chimeStyle', 'progressSign'].some((k) => k in patch)) sendOptions();
   }
 
   // ---------- onboarding choreography

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Buddy Admin</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <section id="login" class="login" hidden>
+    <form id="login-form" class="panel">
+      <div class="logo">🐾</div>
+      <h1>Desktop Buddy admin</h1>
+      <p class="muted">Enter the <code>ADMIN_TOKEN</code> set on the server.</p>
+      <input id="token" type="password" autocomplete="current-password" placeholder="Admin token" required>
+      <button type="submit" class="primary">Sign in</button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </section>
+
+  <div id="app" class="layout" hidden>
+    <nav class="side">
+      <div class="brand">🐾 Buddy Admin</div>
+      <button data-tab="overview" class="tab active">📊 Overview</button>
+      <button data-tab="feedback" class="tab">💬 Feedback <span class="badge" id="badge-feedback"></span></button>
+      <button data-tab="crashes" class="tab">💥 Crashes <span class="badge" id="badge-crashes"></span></button>
+      <button data-tab="users" class="tab">👥 Users</button>
+      <button data-tab="announcements" class="tab">📣 Announcements</button>
+      <button id="logout" class="tab subtle">Sign out</button>
+    </nav>
+    <main id="main" class="main" aria-live="polite"></main>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="admin.js"></script>
+</body>
+</html>

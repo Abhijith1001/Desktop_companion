@@ -162,10 +162,10 @@ export default function BookmarksPage({ selectedId }) {
 
   return (
     <div className="flex h-full">
-      <section className="flex w-96 shrink-0 flex-col border-r border-stone-200 dark:border-stone-800" aria-label="Bookmark list">
+      <section className={`flex w-full shrink-0 flex-col border-r border-stone-200 md:w-80 lg:w-96 dark:border-stone-800 ${selectedId ? 'max-md:hidden' : ''}`} aria-label="Bookmark list">
         <div className="space-y-2 border-b border-stone-200 p-4 dark:border-stone-800">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">Bookmarks</h1>
+            <h1 className="text-lg font-semibold tracking-[-0.01em]">Bookmarks</h1>
             <button type="button" className="btn-ghost text-xs" onClick={() => navigate('/chat')}>+ Capture</button>
           </div>
           <input type="search" className="input" placeholder="Search titles, text and notes…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search bookmarks" />
@@ -219,7 +219,8 @@ export default function BookmarksPage({ selectedId }) {
           )}
         </ul>
       </section>
-      <section className="min-w-0 flex-1 overflow-y-auto" aria-label="Bookmark details">
+      <section className={`min-w-0 flex-1 overflow-y-auto ${selectedId ? '' : 'max-md:hidden'}`} aria-label="Bookmark details">
+        {selectedId && <a href="#/bookmarks" className="sticky top-0 z-10 flex items-center gap-1 border-b border-stone-200 bg-stone-50/95 px-4 py-2 text-sm font-medium text-stone-600 backdrop-blur md:hidden dark:border-stone-800 dark:bg-stone-950/95 dark:text-stone-300">‹ All bookmarks</a>}
         {selectedId
           ? <Detail key={selectedId} id={selectedId} onDeleted={() => navigate('/bookmarks')} />
           : <p className="p-10 text-center text-sm text-stone-500">{facets.total ? 'Select a bookmark to view or edit it.' : ''}</p>}

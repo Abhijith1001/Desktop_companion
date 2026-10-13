@@ -29,4 +29,7 @@ export const api = {
   notes: wrap(bridge.notes),
   onboarding: wrap(bridge.onboarding),
   app: wrap(bridge.app),
+  habits: wrap(bridge.habits),
+  community: wrap(bridge.community),
+  calendar: wrap(bridge.calendar),
 };

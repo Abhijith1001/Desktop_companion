@@ -29,9 +29,19 @@ function createBuddyLife({ db, tasks, settings, log, getPet, getManager, isBusy,
   const canTalk = () => { const p = pet(); return p && p.isVisible() && !p.isSleeping() && !isBusy(); };
   const say = (text, ms = 3500) => { if (canTalk()) pet().speak(text, ms); };
 
+  // Pending tasks due before midnight, overdue ones included (the buddy's sign).
+  function leftToday() {
+    const end = new Date();
+    end.setHours(24, 0, 0, 0);
+    return tasks.list().filter((t) => {
+      const at = t.status === 'PENDING' && (t.nextOccurrenceAt || t.dueAt);
+      return at && Date.parse(at) < end.getTime();
+    }).length;
+  }
+
   function pushMood() {
     const s = mood.summary();
-    pet()?.setMood({ level: s.level, hungry: s.hungry });
+    pet()?.setMood({ level: s.level, hungry: s.hungry, overdue: s.overdue > 0, left: leftToday() });
     getManager()?.send('buddy:stats', s);
     return s;
   }

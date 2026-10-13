@@ -65,9 +65,9 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-6">
+    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
       <header>
-        <h1 className="text-2xl font-bold">Account & sync</h1>
+        <h1 className="page-title">Account & sync</h1>
         <p className="text-sm text-stone-500">Optional. Reminders always work offline — sync only keeps your tasks in step across computers.</p>
       </header>
 

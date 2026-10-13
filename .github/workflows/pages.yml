@@ -1,0 +1,40 @@
+# Publishes the landing page (site/) to GitHub Pages. The buddy art and
+# animations are copied from the app so the page always shows the real thing.
+# One-time setup: repo Settings → Pages → Source: "GitHub Actions".
+name: Landing page
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'electron/pet/characters.js', 'electron/pet/buddy.css', 'build/icon.png', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble site
+        run: |
+          mkdir -p _site/buddy
+          cp -r site/. _site/
+          cp electron/pet/characters.js electron/pet/buddy.css _site/buddy/
+          cp build/icon.png _site/favicon.png
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

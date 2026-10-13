@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../services/api';
 import { useTasks, useToasts } from '../../stores';
 import { PriorityChip } from '../../components/ui';
+import Icon from '../../components/Icon';
 import { formatWhen, relative, isOverdue, whenOf } from '../../utils/dates';
 
 const HISTORY_LABEL = {
@@ -39,10 +40,10 @@ export default function TaskDetail({ id, onEdit, onClose }) {
   };
 
   return (
-    <aside className="flex h-full flex-col gap-4 overflow-y-auto border-l border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900" aria-label="Task details">
+    <aside className="flex h-full flex-col gap-5 overflow-y-auto overscroll-contain border-l border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900" aria-label="Task details">
       <div className="flex items-start gap-2">
-        <h2 className={`flex-1 text-xl font-bold leading-tight ${done ? 'text-stone-400 line-through' : ''}`}>{task.title}</h2>
-        <button type="button" className="btn-ghost px-2" onClick={onClose} aria-label="Close details">✕</button>
+        <h2 className={`flex-1 text-lg font-semibold leading-snug tracking-[-0.01em] [overflow-wrap:anywhere] ${done ? 'text-stone-400 line-through' : ''}`}>{task.title}</h2>
+        <button type="button" className="btn-ghost -mr-2 -mt-1 px-2" onClick={onClose} aria-label="Close details"><Icon name="x" /></button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -56,9 +57,9 @@ export default function TaskDetail({ id, onEdit, onClose }) {
       <div className="flex flex-wrap gap-2">
         {done
           ? <button type="button" className="btn-outline" onClick={() => run(() => api.tasks.reopen(task.id))}>↺ Reopen</button>
-          : <button type="button" className="btn-primary" onClick={async () => { await run(() => api.tasks.complete(task.id)); toast(task.recurrence ? 'Done — next one scheduled' : 'Nice work! ✅'); }}>✓ Mark done</button>}
-        <button type="button" className="btn-outline" onClick={() => onEdit(task)}>✎ Edit</button>
-        <button type="button" className="btn-ghost text-red-600 dark:text-red-400" onClick={remove}>Delete</button>
+          : <button type="button" className="btn-primary" onClick={async () => { await run(() => api.tasks.complete(task.id)); toast(task.recurrence ? 'Done — next one scheduled' : 'Nice work! ✅'); }}><Icon name="check" size={16} strokeWidth={2.5} />Mark done</button>}
+        <button type="button" className="btn-outline" onClick={() => onEdit(task)}>Edit</button>
+        <button type="button" className="btn-ghost ml-auto text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40" onClick={remove}>Delete</button>
       </div>
 
       {!done && when && (
@@ -75,10 +76,10 @@ export default function TaskDetail({ id, onEdit, onClose }) {
         </div>
       )}
 
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+      <dl className="tabular grid grid-cols-[auto_1fr] gap-x-5 gap-y-2 border-t border-stone-100 pt-4 text-sm dark:border-stone-800">
         <dt className="text-stone-500">When</dt>
         <dd>{when ? <>{formatWhen(when)} <span className="text-stone-500">({relative(when)})</span></> : 'No date'}</dd>
-        {task.dueAt && <><dt className="text-stone-500">Repeats</dt><dd>{task.recurrenceText}</dd></>}
+        {task.recurrence && task.recurrence.type !== 'none' && <><dt className="text-stone-500">Repeats</dt><dd>{task.recurrenceText}</dd></>}
         {task.dueAt && <><dt className="text-stone-500">Reminder</dt><dd>{task.leadMinutes ? `${task.leadMinutes} min before` : 'At the time'}</dd></>}
         {task.dueAt && <><dt className="text-stone-500">Time zone</dt><dd>{task.timeZone}</dd></>}
         {task.completedAt && <><dt className="text-stone-500">Completed</dt><dd>{formatWhen(task.completedAt)}</dd></>}

@@ -23,32 +23,35 @@
     @apply bg-stone-50 text-stone-900 antialiased dark:bg-stone-950 dark:text-stone-100;
   }
   :focus-visible { @apply outline-2 outline-offset-2 outline-brand-500; }
+  html { -webkit-tap-highlight-color: transparent; }
+  body { font-feature-settings: 'cv11', 'ss01'; text-rendering: optimizeLegibility; }
+  button, [role='button'], a[href], select, summary, label[for] { touch-action: manipulation; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full border-2 border-solid border-transparent bg-stone-300 bg-clip-padding dark:bg-stone-700; }
+  ::-webkit-scrollbar-track { background: transparent; }
   ::selection { @apply bg-brand-200 text-stone-900; }
 }
 
 @utility btn {
-  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50;
 }
 @utility btn-primary {
-  @apply btn bg-brand-500 text-stone-950 hover:bg-brand-400;
+  @apply btn bg-brand-500 text-stone-950 shadow-[inset_0_-1px_0_rgb(0_0_0/0.12)] hover:bg-brand-400 active:bg-brand-600;
 }
 @utility btn-ghost {
   @apply btn text-stone-600 hover:bg-stone-200/70 dark:text-stone-300 dark:hover:bg-stone-800;
 }
 @utility btn-outline {
-  @apply btn border border-stone-300 bg-white hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-900 dark:hover:bg-stone-800;
+  @apply btn border border-stone-200 bg-white text-stone-800 hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:hover:bg-stone-800;
 }
 @utility btn-danger {
   @apply btn bg-red-600 text-white hover:bg-red-500;
 }
 @utility input {
-  @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-stone-700 dark:bg-stone-900;
+  @apply min-h-9 w-full rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-stone-700 dark:bg-stone-900;
 }
 @utility label {
   @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400;
-}
-@utility card {
-  @apply rounded-2xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900;
 }
 @utility chip {
   @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
@@ -62,3 +65,55 @@
 .welcome-step { animation: welcome-in .35s cubic-bezier(.2, .8, .2, 1); }
 @keyframes welcome-in { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .welcome-step { animation: none; } }
+
+/* ---------- Surfaces, type scale and micro-animations */
+
+
+/* Solid surfaces with a hairline border; elevation is reserved for overlays. */
+@utility card {
+  @apply rounded-xl border border-stone-200/90 bg-white shadow-[0_1px_2px_rgb(28_25_23/0.04)] dark:border-stone-800 dark:bg-stone-900;
+}
+
+/* Type scale: one page title style, one section style, one meta style. */
+@utility page-title {
+  @apply text-[1.625rem] leading-tight font-semibold tracking-[-0.015em] text-stone-950 dark:text-stone-50;
+}
+@utility page-subtitle {
+  @apply mt-1 text-sm text-stone-500 dark:text-stone-400;
+}
+@utility section-label {
+  @apply text-[11px] font-semibold uppercase tracking-[0.06em] text-stone-500 dark:text-stone-400;
+}
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Loading placeholder. */
+.skeleton { @apply animate-pulse rounded-md bg-stone-200/80 dark:bg-stone-800; }
+
+/* Page change: a quick fade-up. */
+.page-in { animation: page-in .22s cubic-bezier(.2, .8, .2, 1); }
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Task rows slide in; completing one pops the check and slides the row away. */
+.task-row { animation: row-in .25s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes row-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.task-row.completing { animation: row-out .38s cubic-bezier(.5, 0, .75, 0) forwards .12s; }
+@keyframes row-out { to { opacity: 0; transform: translateX(24px); } }
+.check-pop { animation: check-pop .35s cubic-bezier(.2, 1.8, .4, 1); }
+@keyframes check-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+/* Toasts and dialogs pop in. */
+.toast-in { animation: toast-in .28s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: none; } }
+.dialog-in { animation: dialog-in .2s cubic-bezier(.2, .8, .2, 1); }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* Accent swatches in Settings. */
+.swatch { @apply grid h-9 w-9 place-items-center rounded-full border-2 border-transparent text-xs font-bold text-white shadow-sm transition-transform hover:scale-110; }
+.swatch[aria-checked="true"] { @apply border-stone-900 dark:border-white; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-in, .task-row, .check-pop, .toast-in, .dialog-in { animation: none; }
+  .task-row.completing { animation: none; opacity: .4; }
+}

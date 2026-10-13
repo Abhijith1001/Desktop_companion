@@ -155,6 +155,10 @@ Security measures:
 
 ---
 
+## Releasing, landing page & admin panel
+
+See [RELEASING.md](RELEASING.md): tag-based releases with auto-update, the GitHub Pages landing page in `site/`, the admin panel at `/admin` on the sync server (feedback, opt-in crash reports, users, announcements), code signing, the Microsoft Store and winget.
+
 ## Security (desktop)
 
 - **Renderers are locked down:** every renderer runs with `contextIsolation`, `sandbox`, no Node integration, a strict CSP, a deny-all `window.open` and blocked navigation.

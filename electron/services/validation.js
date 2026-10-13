@@ -55,6 +55,10 @@ const settingsPatch = z.object({
   startWithWindows: z.boolean(),
   startHidden: z.boolean(),
   theme: z.enum(['system', 'light', 'dark']),
+  accent: z.enum(['character', 'amber', 'rose', 'violet', 'sky', 'emerald']),
+  chimeStyle: z.enum(['bells', 'marimba', 'soft', 'arcade', 'droplet']),
+  progressSign: z.boolean(),
+  crashReports: z.boolean(),
   updates: z.object({ mode: z.enum(['auto', 'ask']) }),
   followCursor: z.boolean(),
   perchOnWindows: z.boolean(),
@@ -180,7 +184,42 @@ function parse(schema, value) {
   throw err;
 }
 
+const habitInput = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(200),
+  description: z.string().max(500).default(''),
+  icon: z.string().max(8).default('⭐'),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Invalid hex color').default('#e8994a'),
+  frequency: z.enum(['daily', 'weekly']).default('daily'),
+  targetDays: z.array(z.number().int().min(0).max(7)).min(1).max(7).default([1,2,3,4,5,6,7]),
+  sortOrder: z.number().int().min(0).default(0),
+}).strict();
+
+const habitPatch = z.object({
+  name: z.string().trim().min(1).max(200),
+  description: z.string().max(500),
+  icon: z.string().max(8),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  frequency: z.enum(['daily', 'weekly']),
+  targetDays: z.array(z.number().int().min(0).max(7)).min(1).max(7),
+  archived: z.boolean(),
+  sortOrder: z.number().int().min(0),
+}).partial().strict();
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
+
+const feedbackInput = z.object({
+  kind: z.enum(['idea', 'bug', 'love', 'other']),
+  message: z.string().trim().min(3).max(4000),
+  email: z.union([z.string().trim().email().max(200), z.literal('')]).default(''),
+}).strict();
+const errorReport = z.object({
+  message: z.string().max(1000).default(''),
+  stack: z.string().max(8000).default(''),
+}).strip();
+
 module.exports = {
+  feedbackInput, errorReport,
   isoDateTime, taskInput, settingsPatch, credentials, id, snoozeMinutes, recurrenceSchema, parse, safeUrl,
-  bookmarkInput, bookmarkPatch, bookmarkFilter, droppedText, accelerator, captureSettings, aiRequest, apiKey, noteInput, equipInput, weatherQuery,
+  bookmarkInput, bookmarkPatch, bookmarkFilter, droppedText, accelerator, captureSettings, aiRequest, apiKey,
+  noteInput, equipInput, weatherQuery, habitInput, habitPatch, isoDate,
 };

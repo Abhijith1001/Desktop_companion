@@ -87,9 +87,9 @@ export default function CalculatorPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-wrap gap-6 p-6">
-      <div ref={ref} tabIndex={0} onKeyDown={onKeyDown} className="card w-80 shrink-0 p-4 outline-none" aria-label="Calculator. Type numbers and operators, Enter to calculate.">
-        <h1 className="mb-3 text-xl font-bold">Calculator</h1>
+    <div className="mx-auto flex max-w-3xl flex-wrap gap-6 px-4 py-6 sm:px-6 lg:py-8">
+      <div ref={ref} tabIndex={0} onKeyDown={onKeyDown} className="card w-full shrink-0 p-4 outline-none sm:w-80" aria-label="Calculator. Type numbers and operators, Enter to calculate.">
+        <h1 className="mb-3 text-lg font-semibold tracking-[-0.01em]">Calculator</h1>
         <div className="mb-3 rounded-xl bg-stone-100 px-4 py-3 text-right dark:bg-stone-950" aria-live="polite">
           <div className="min-h-6 break-all font-mono text-sm text-stone-500">{justEvaluated ? '' : expr || ' '}</div>
           <div className={`break-all font-mono text-3xl font-bold ${error ? 'text-red-600 text-lg' : ''}`}>

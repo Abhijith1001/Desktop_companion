@@ -1,0 +1,17 @@
+# winget installer manifest. InstallerSha256 must match the uploaded .exe:
+#   certutil -hashfile release\Desktop-Buddy-Setup-2.1.1.exe SHA256
+# (wingetcreate fills this in for you.)
+PackageIdentifier: Devwerks.DesktopBuddy
+PackageVersion: 2.1.1
+InstallerType: nullsoft
+Scope: user
+InstallModes:
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/Abhijith1001/Desktop_companion/releases/download/v2.1.1/Desktop-Buddy-Setup-2.1.1.exe
+    InstallerSha256: REPLACE_WITH_SHA256
+ManifestType: installer
+ManifestVersion: 1.6.0

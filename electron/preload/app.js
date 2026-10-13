@@ -22,6 +22,11 @@ contextBridge.exposeInMainWorld('buddy', {
     onChange: on('tasks:changed'),
     calendar: invoke('calendar:range'),
   },
+  calendar: {
+    range: invoke('calendar:range'),
+    importIcs: invoke('calendar:import-ics'),
+    fetchAndImport: invoke('calendar:fetch-and-import'),
+  },
   settings: {
     get: invoke('settings:get'),
     update: invoke('settings:update'),
@@ -49,6 +54,7 @@ contextBridge.exposeInMainWorld('buddy', {
     preview: invoke('buddy:preview'),
     stats: invoke('buddy:stats'),
     feed: invoke('buddy:feed'),
+    speak: invoke('buddy:speak'),
     onStats: on('buddy:stats'),
   },
   weather: {
@@ -111,4 +117,24 @@ contextBridge.exposeInMainWorld('buddy', {
     openLogs: invoke('app:open-logs'),
     onNavigate: on('app:navigate'),
   },
+  community: {
+    sendFeedback: invoke('feedback:send'),
+    reportError: invoke('errors:report'),
+    announcements: invoke('announcements:list'),
+    dismiss: invoke('announcements:dismiss'),
+    onAnnouncements: on('announcements:changed'),
+  },
+  habits: {
+    list: invoke('habits:list'),
+    get: invoke('habits:get'),
+    create: invoke('habits:create'),
+    update: invoke('habits:update'),
+    remove: invoke('habits:delete'),
+    complete: invoke('habits:complete'),
+    uncomplete: invoke('habits:uncomplete'),
+    range: invoke('habits:range'),
+    streak: invoke('habits:streak'),
+    onChange: on('habits:changed'),
+  },
 });
+

@@ -204,7 +204,7 @@ export default function ChatPage() {
   return (
     <div className="relative flex h-full flex-col" onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
       <header className="flex flex-wrap items-center gap-2 border-b border-stone-200 px-6 py-3 dark:border-stone-800">
-        <h1 className="text-xl font-bold">Chat</h1>
+        <h1 className="text-lg font-semibold tracking-[-0.01em]">Chat</h1>
         <span className={`chip ${ai?.configured ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300' : 'bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-300'}`}
           title={ai?.configured ? 'Messages are only sent after you agree' : 'Chat works offline; questions search your bookmarks'}>
           {ai?.configured ? `AI on · asks before sending${chat.aiConsent ? ' (allowed this session)' : ''}` : 'AI off · local only'}

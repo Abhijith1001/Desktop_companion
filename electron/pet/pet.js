@@ -28,6 +28,27 @@
       `mood-${mood.level}`, mood.hungry ? 'hungry' : '', hovering && !dragging ? 'hovered' : '',
       look?.inside ? 'curious' : '', decor.season ? `season-${decor.season}` : ''].filter(Boolean).join(' ');
     applyLook();
+    renderSign();
+  }
+
+  // ---------- "N left today" sign, shown while the buddy is standing still
+  const sign = document.getElementById('sign');
+  let signText = '';
+  function renderSign() {
+    const left = mood.left || 0;
+    const visible = options.progressSign && left > 0 && !options.paused && ['idle', 'sit'].includes(css) && !dragging;
+    sign.classList.toggle('show', visible);
+    const text = `${left} left today${mood.overdue ? '!' : ''}`;
+    if (!visible || text === signText) return;
+    const bumped = signText !== '';
+    signText = text;
+    const board = document.createElement('div');
+    board.className = `board${mood.overdue ? ' late' : ''}`;
+    board.textContent = text;
+    const post = document.createElement('div');
+    post.className = 'post';
+    sign.replaceChildren(board, post);
+    if (bumped) { sign.classList.remove('bump'); void sign.offsetWidth; sign.classList.add('bump'); }
   }
 
   // ---------- mannerisms: short cartoon quirks played now and then while idle
@@ -320,22 +341,7 @@
   // ---------- sound & speech (failures never break the reminder)
   function chime() {
     try {
-      const ctx = new AudioContext();
-      const vol = Math.max(0, Math.min(1, options.volume)) * 0.4;
-      [880, 1175, 1568].forEach((f, i) => {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.value = f;
-        const t0 = ctx.currentTime + i * 0.14;
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t0 + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
-        o.connect(g).connect(ctx.destination);
-        o.start(t0);
-        o.stop(t0 + 0.32);
-      });
-      setTimeout(() => ctx.close(), 1000);
+      window.playChime(options.chimeStyle, options.volume);
     } catch (err) {
       console.warn('chime failed', err);
     }

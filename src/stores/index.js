@@ -113,6 +113,53 @@ export const useProgress = create((set) => ({
   },
 }));
 
+// Habit tracker store
+export const useHabits = create((set, get) => ({
+  habits: [],
+  completions: {}, // { [date]: Set<habitId> }
+  loaded: false,
+  async load() {
+    const habits = await api.habits.list({});
+    set({ habits, loaded: true });
+  },
+  async loadRange(from, to) {
+    const rows = await api.habits.range(from, to);
+    const completions = {};
+    for (const r of rows) {
+      if (!completions[r.date]) completions[r.date] = new Set();
+      completions[r.date].add(r.habit_id);
+    }
+    set({ completions });
+  },
+  async create(input) {
+    const h = await api.habits.create(input);
+    await get().load();
+    return h;
+  },
+  async update(id, patch) {
+    const h = await api.habits.update(id, patch);
+    await get().load();
+    return h;
+  },
+  async remove(id) {
+    await api.habits.remove(id);
+    await get().load();
+  },
+  async toggle(habitId, date) {
+    const { completions } = get();
+    const dateSet = completions[date] || new Set();
+    if (dateSet.has(habitId)) {
+      await api.habits.uncomplete(habitId, date);
+      const next = new Set(dateSet); next.delete(habitId);
+      set({ completions: { ...completions, [date]: next } });
+    } else {
+      await api.habits.complete(habitId, date, '');
+      const next = new Set(dateSet); next.add(habitId);
+      set({ completions: { ...completions, [date]: next } });
+    }
+  },
+}));
+
 // Wire main-process events to the stores once.
 export function subscribeToMain() {
   const offs = [
@@ -122,8 +169,10 @@ export function subscribeToMain() {
     api.sync.onStatus((s) => useSync.getState().receive(s)),
     api.bookmarks.onChange(() => useBookmarks.getState().refresh()),
     api.capture.onNew(() => useChat.getState().pullPending()),
+    api.habits.onChange(() => useHabits.getState().load()),
   ];
   useBookmarks.getState().refresh();
   useProgress.getState().load();
   return () => offs.forEach((off) => off());
 }
+

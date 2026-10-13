@@ -127,3 +127,22 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
   .weather i { animation: none !important; }
   .weather .drop, .weather .flake, .weather .flash { display: none; }
 }
+
+/* ---------- "tasks left today" sign the buddy keeps beside it ---------- */
+#sign {
+  position: absolute; left: calc(50% + 46px); bottom: 6px; z-index: 5; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center;
+  opacity: 0; transform: translateY(8px) rotate(4deg) scale(.8); transform-origin: 50% 100%;
+  transition: opacity .25s ease, transform .35s cubic-bezier(.2, 1.5, .4, 1);
+}
+#sign.show { opacity: 1; transform: rotate(4deg); }
+#sign.bump { animation: sign-bump .5s cubic-bezier(.2, 1.6, .4, 1); }
+#sign .board {
+  padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; white-space: nowrap; color: #4e2c12;
+  background: linear-gradient(180deg, #f8d7a4, #e9b877); box-shadow: 0 2px 4px rgba(43, 29, 20, .35), inset 0 0 0 1.5px #a7713a;
+}
+#sign .board.late { color: #fff; background: linear-gradient(180deg, #ff8a80, #e53935); box-shadow: 0 2px 4px rgba(43, 29, 20, .35), inset 0 0 0 1.5px #a32620; }
+#sign .post { width: 4px; height: 18px; background: #a7713a; border-radius: 0 0 2px 2px; }
+@keyframes sign-bump { 0% { transform: rotate(4deg) scale(1); } 40% { transform: rotate(-6deg) scale(1.15); } 100% { transform: rotate(4deg) scale(1); } }
+@media (prefers-reduced-motion: reduce) { #sign, #sign.bump { transition: opacity .2s; animation: none; } }
+#bubble.show ~ #sign { opacity: 0; }

@@ -2,6 +2,7 @@
 // dependencies so they can be unit-tested without Electron.
 const v = require('../services/validation');
 const { nextOccurrence, isRecurring } = require('../scheduler/recurrence');
+const calendarImport = require('../services/calendarImport');
 
 const MAX_CALENDAR_ITEMS = 1000;
 const { z } = require('zod');
@@ -41,7 +42,7 @@ function calendarRange(list, from, to) {
 
 function createHandlers({
   tasks, settings, engine, sync, pet, info, exportData, confirmDeleteAccount, openExternal, openLogs, previewBuddy,
-  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare, updater,
+  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare, updater, habits, community,
 }) {
   const changed = () => { engine.wake(); sync.notifyLocalChange(); };
 
@@ -60,6 +61,33 @@ function createHandlers({
       const t = v.parse(v.isoDateTime, to);
       if (Date.parse(t) - Date.parse(f) > 100 * 86_400_000) throw new Error('Range too large');
       return calendarRange(tasks.list(), f, t);
+    },
+    'calendar:import-ics': ({ icsText, defaultLeadMinutes = 10, category = 'Meeting' }) => {
+      const events = calendarImport.parseIcs(icsText);
+      const tz = settings?.getAll?.()?.timeZone || 'UTC';
+      const result = calendarImport.importCalendarEvents({
+        tasks,
+        events,
+        defaultLeadMinutes: Number(defaultLeadMinutes) || 10,
+        category: String(category || 'Meeting'),
+        timeZone: tz,
+      });
+      changed();
+      return result;
+    },
+    'calendar:fetch-and-import': async ({ url, defaultLeadMinutes = 10, category = 'Meeting' }) => {
+      const icsText = await calendarImport.fetchIcsFeed(url);
+      const events = calendarImport.parseIcs(icsText);
+      const tz = settings?.getAll?.()?.timeZone || 'UTC';
+      const result = calendarImport.importCalendarEvents({
+        tasks,
+        events,
+        defaultLeadMinutes: Number(defaultLeadMinutes) || 10,
+        category: String(category || 'Meeting'),
+        timeZone: tz,
+      });
+      changed();
+      return result;
     },
 
     'progress:state': () => progress.state(),
@@ -94,6 +122,12 @@ function createHandlers({
     'app:info': () => info(),
     'app:open-external': (url) => { openExternal(v.parse(v.safeUrl.refine((s) => s !== ''), url)); return true; },
     'app:open-logs': () => openLogs(),
+
+    // ---- Feedback, opt-in crash reports, announcements (server /api/public)
+    'feedback:send': (input) => community.sendFeedback(v.parse(v.feedbackInput, input)),
+    'errors:report': (input) => { community.reportCrash({ source: 'renderer', ...v.parse(v.errorReport, input) }); return true; },
+    'announcements:list': () => community.announcements(),
+    'announcements:dismiss': (id) => community.dismiss(v.parse(z.string().min(1).max(64), id)),
     'updates:status': () => updater().status(),
     'updates:check': () => updater().check(),
     'updates:download': () => updater().download(),
@@ -141,6 +175,24 @@ function createHandlers({
     'weather:current': () => weather.current(),
     'buddy:stats': () => buddyCare.stats(),
     'buddy:feed': () => buddyCare.feed(),
+    'buddy:speak': (text) => {
+      const p = typeof pet === 'function' ? pet() : pet;
+      if (p && typeof p.speak === 'function') {
+        p.speak(v.parse(z.string().max(300), text), 4000);
+      }
+      return true;
+    },
+
+    // ---- Habits
+    'habits:list': (opts) => habits.list(opts ?? {}),
+    'habits:get': (id) => habits.get(v.parse(v.id, id)),
+    'habits:create': (input) => habits.create(v.parse(v.habitInput, input)),
+    'habits:update': (id, patch) => habits.update(v.parse(v.id, id), v.parse(v.habitPatch, patch)),
+    'habits:delete': (id) => habits.remove(v.parse(v.id, id)),
+    'habits:complete': (id, date, note) => habits.complete(v.parse(v.id, id), date ? v.parse(v.isoDate, date) : undefined, note ?? ''),
+    'habits:uncomplete': (id, date) => habits.uncomplete(v.parse(v.id, id), date ? v.parse(v.isoDate, date) : undefined),
+    'habits:range': (from, to) => habits.rangeCompletions(v.parse(v.isoDate, from), v.parse(v.isoDate, to)),
+    'habits:streak': (id) => habits.streak(v.parse(v.id, id)),
   };
 }
 

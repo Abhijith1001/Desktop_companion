@@ -18,3 +18,5 @@ services:
         generateValue: true
       - key: MONGODB_URI
         sync: false # entered in the dashboard; never committed
+      - key: ADMIN_TOKEN
+        sync: false # admin panel password (24+ chars); leave empty to disable /admin

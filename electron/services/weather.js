@@ -1,6 +1,7 @@
 // Local weather for the buddy, from Open-Meteo (free, no API key). Only the
 // location the user picked is sent; nothing else leaves the computer.
 const GEO_URL = 'https://geocoding-api.open-meteo.com/v1/search';
+const OSM_URL = 'https://nominatim.openstreetmap.org/search';
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const IP_SERVICES = [
   { url: 'https://ipwho.is/', country: 'country' },
@@ -37,10 +38,29 @@ function createWeather({ settings, log, onUpdate = () => {}, fetchImpl = fetch }
   async function search(query) {
     const q = new URLSearchParams({ name: query, count: '6', language: 'en', format: 'json' });
     const data = await getJson(`${GEO_URL}?${q}`);
-    return (data.results || []).map((r) => ({
+    const found = (data.results || []).map((r) => ({
       name: r.name, lat: r.latitude, lon: r.longitude,
       country: [r.admin1, r.country].filter(Boolean).join(', ').slice(0, 80),
     }));
+    if (found.length) return found;
+    // Open-Meteo only knows larger places; OpenStreetMap also has villages.
+    try {
+      const n = new URLSearchParams({ q: query, format: 'jsonv2', limit: '6', addressdetails: '1', 'accept-language': 'en' });
+      const res = await fetchImpl(`${OSM_URL}?${n}`, {
+        signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'User-Agent': 'DesktopBuddy/2 (weather lookup)' },
+      });
+      if (!res.ok) return [];
+      return (await res.json()).map((r) => {
+        const a = r.address || {};
+        return {
+          name: r.name || a.village || a.town || a.city || query, lat: Number(r.lat), lon: Number(r.lon),
+          country: [a.state, a.country].filter(Boolean).join(', ').slice(0, 80),
+        };
+      }).filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lon));
+    } catch (err) {
+      log.warn('osm search failed', { error: err.message });
+      return [];
+    }
   }
 
   // Approximate location from the public IP address (city level). Free
