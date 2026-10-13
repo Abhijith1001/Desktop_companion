@@ -1,0 +1,15 @@
+# Pings the Render free instance so it doesn't spin down after 15 idle minutes.
+name: Keep sync server awake
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping /health
+        run: curl -fsS --max-time 90 --retry 2 --retry-delay 10 https://desktop-buddy-server.onrender.com/health
