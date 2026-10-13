@@ -19,6 +19,7 @@ export const api = {
   settings: wrap(bridge.settings),
   reminders: wrap(bridge.reminders),
   progress: wrap(bridge.progress),
+  updates: wrap(bridge.updates),
   buddy: wrap(bridge.buddy),
   weather: wrap(bridge.weather),
   sync: wrap(bridge.sync),

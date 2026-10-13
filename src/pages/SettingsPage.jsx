@@ -6,6 +6,45 @@ import { navigate } from '../hooks/useRoute';
 import { allTimeZones } from '../utils/dates';
 import ShortcutInput from '../features/capture/ShortcutInput';
 
+const UPDATE_TEXT = {
+  idle: 'Not checked yet',
+  checking: 'Checking…',
+  latest: 'You have the latest version',
+  available: (u) => `Version ${u.version} is available`,
+  downloading: (u) => `Downloading ${u.version || 'update'}… ${u.progress ?? 0}%`,
+  ready: (u) => `Version ${u.version} is ready — restart to install`,
+  error: (u) => `Update check failed: ${u.error}`,
+  unsupported: 'Updates work in the installed app only',
+};
+
+function UpdatesSection({ s, update }) {
+  const [u, setU] = useState(null);
+  useEffect(() => { api.updates.status().then(setU).catch(() => {}); return api.updates.onStatus(setU); }, []);
+  const text = u && (typeof UPDATE_TEXT[u.state] === 'function' ? UPDATE_TEXT[u.state](u) : UPDATE_TEXT[u.state]);
+  const busy = !u || ['checking', 'downloading', 'unsupported'].includes(u.state);
+  return (
+    <Section title="Updates" description={u ? `You're on version ${u.current}.` : undefined}>
+      <div className="py-3">
+        <Field label="When a new version is out" htmlFor="upd-mode">
+          <select id="upd-mode" className="input w-auto" value={s.updates.mode} onChange={(e) => update({ updates: { mode: e.target.value } })}>
+            <option value="auto">Update automatically (installs when you quit or restart)</option>
+            <option value="ask">Ask me before downloading</option>
+          </select>
+        </Field>
+      </div>
+      <div className="flex items-center justify-between gap-4 py-3">
+        <span className="text-sm text-stone-600 dark:text-stone-300" aria-live="polite">{text}</span>
+        <span className="flex shrink-0 gap-2">
+          {u?.state === 'available' && <button type="button" className="btn-primary" onClick={() => api.updates.download()}>Download</button>}
+          {u?.state === 'ready'
+            ? <button type="button" className="btn-primary" onClick={() => api.updates.install()}>Restart & update</button>
+            : <button type="button" className="btn-outline" disabled={busy} onClick={() => api.updates.check()}>Check for updates</button>}
+        </span>
+      </div>
+    </Section>
+  );
+}
+
 function CaptureSection({ s, update }) {
   const [status, setStatus] = useState(null);
   useEffect(() => { api.capture.status().then(setStatus).catch(() => {}); return api.capture.onStatus(setStatus); }, []);
@@ -297,6 +336,7 @@ export default function SettingsPage() {
         </div>
       </Section>
 
+      <UpdatesSection s={s} update={update} />
       <CaptureSection s={s} update={update} />
       <AiSection />
 

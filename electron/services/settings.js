@@ -36,7 +36,8 @@ const DEFAULTS = {
   // Local weather (Open-Meteo). location: { name, lat, lon, country } or null.
   weather: { enabled: true, location: null, unit: 'C' },
   accessory: null,               // unlocked accessory id (see services/progress.js)
-  background: 'meadow',          // unlocked background id
+  background: 'meadow',
+  updates: { mode: 'auto' },     // auto = download + install on quit; ask = prompt first          // unlocked background id
   // Text capture from other apps. Shortcuts are Electron accelerators.
   capture: { shortcut: 'Control+Shift+B', clipboardFallback: true, ocrEnabled: false, ocrShortcut: 'Control+Shift+O' },
   // Local dev server: serverUrl: 'http://localhost:4000'

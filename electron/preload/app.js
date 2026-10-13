@@ -32,6 +32,13 @@ contextBridge.exposeInMainWorld('buddy', {
     equip: invoke('progress:equip'),
     onUnlocked: on('progress:unlocked'),
   },
+  updates: {
+    status: invoke('updates:status'),
+    check: invoke('updates:check'),
+    download: invoke('updates:download'),
+    install: invoke('updates:install'),
+    onStatus: on('updates:status'),
+  },
   reminders: {
     pause: invoke('reminders:pause'),
     status: invoke('reminders:status'),

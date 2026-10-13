@@ -41,7 +41,7 @@ function calendarRange(list, from, to) {
 
 function createHandlers({
   tasks, settings, engine, sync, pet, info, exportData, confirmDeleteAccount, openExternal, openLogs, previewBuddy,
-  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare,
+  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare, updater,
 }) {
   const changed = () => { engine.wake(); sync.notifyLocalChange(); };
 
@@ -94,6 +94,10 @@ function createHandlers({
     'app:info': () => info(),
     'app:open-external': (url) => { openExternal(v.parse(v.safeUrl.refine((s) => s !== ''), url)); return true; },
     'app:open-logs': () => openLogs(),
+    'updates:status': () => updater().status(),
+    'updates:check': () => updater().check(),
+    'updates:download': () => updater().download(),
+    'updates:install': () => updater().quitAndInstall(),
 
     // ---- Bookmarks (local only)
     'bookmarks:list': (filter) => bookmarks.list(v.parse(v.bookmarkFilter, filter ?? {})),

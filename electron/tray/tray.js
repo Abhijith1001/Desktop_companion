@@ -76,6 +76,10 @@ function createTray({ icon, settings, tasks, characters, getPet, openTasks, paus
         click: () => pet && pet.setSleeping(!pet.isSleeping()),
       },
       ...(care && !s.weather?.location && s.weather?.enabled ? [{ label: 'Set weather location…', click: () => openTasks('/settings') }] : []),
+      {
+        label: 'Show weather', type: 'checkbox', checked: !!s.weather?.enabled,
+        click: (item) => settings.update({ weather: { enabled: item.checked } }),
+      },
       { label: 'Settings…', click: () => openTasks('/settings') },
       { type: 'separator' },
       { label: 'Exit Desktop Buddy', click: exit },

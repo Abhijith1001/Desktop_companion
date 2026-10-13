@@ -10,6 +10,7 @@ const { open: openDb, schemaVersion } = require('./database/db');
 const { createSettings } = require('./services/settings');
 const { createTaskService } = require('./services/tasks');
 const { createProgress } = require('./services/progress');
+const { createUpdater } = require('./services/updater');
 const { createBookmarkService } = require('./services/bookmarks');
 const { createNoteService } = require('./services/notes');
 const { createAi } = require('./services/ai');
@@ -49,7 +50,7 @@ function start() {
   process.on('unhandledRejection', (err) => log.error('unhandled rejection', { error: String(err && err.message || err) }));
 
   let db; let settings; let tasks; let engine; let sync; let presenter; let pet; let manager; let tray;
-  let bookmarks; let capture; let ai; let notes; let onboarding; let progress; let life;
+  let bookmarks; let capture; let ai; let notes; let onboarding; let progress; let life; let updater;
 
   const characters = () => {
     const ctx = { window: {} };
@@ -346,7 +347,7 @@ function start() {
     // ---- IPC from the task manager window
     const handlers = createHandlers({
       tasks, settings, engine, sync, pet: () => pet, exportData, confirmDeleteAccount, previewBuddy,
-      bookmarks, ai, confirmClearBookmarks, notes, onboarding, progress, weather: life.weather, buddyCare: life,
+      bookmarks, ai, confirmClearBookmarks, notes, onboarding, progress, updater: () => updater, weather: life.weather, buddyCare: life,
       copyText: (text) => clipboard.writeText(text),
       capture: {
         selection: (delay) => runCapture('selection', delay),
@@ -405,6 +406,11 @@ function start() {
     });
 
     engine.start();
+    updater = createUpdater({
+      app, dialog, settings, log, getWindow: () => manager.window,
+      onStatus: (s) => manager.send('updates:status', { ...s, current: app.getVersion(), mode: settings.get('updates').mode }),
+    });
+    updater.start();
     life.start();
     sync.start();
     setInterval(checkBreak, 60_000);
@@ -427,7 +433,7 @@ function start() {
 
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
-    try { engine && engine.stop(); sync && sync.stop(); life && life.stop(); pet && pet.destroy(); } catch { /* shutting down */ }
+    try { engine && engine.stop(); sync && sync.stop(); life && life.stop(); updater && updater.stop(); pet && pet.destroy(); } catch { /* shutting down */ }
     try { db && db.close(); } catch { /* already closed */ }
     log.info('stopped');
   });

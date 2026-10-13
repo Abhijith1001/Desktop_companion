@@ -55,6 +55,7 @@ const settingsPatch = z.object({
   startWithWindows: z.boolean(),
   startHidden: z.boolean(),
   theme: z.enum(['system', 'light', 'dark']),
+  updates: z.object({ mode: z.enum(['auto', 'ask']) }),
   followCursor: z.boolean(),
   perchOnWindows: z.boolean(),
   weather: z.object({

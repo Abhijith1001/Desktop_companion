@@ -42,6 +42,7 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
   opacity: 0; pointer-events: none; transform-origin: 50% 100%;
   transform: translateX(-50%) translateY(10px) scale(.85);
   transition: opacity .18s ease, transform .18s ease;
+  z-index: 10; /* above the weather layer */
 }
 #bubble.show { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0) scale(1); }
 #bubble.show.pop { animation: pop .45s cubic-bezier(.2, 1.6, .4, 1); }
@@ -105,9 +106,9 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
 /* ---------- weather around the buddy (built by pet.js) ---------- */
 .weather { position: absolute; left: calc(50% - 115px); bottom: 0; width: 230px; height: 185px; pointer-events: none; overflow: hidden; }
 .weather i { position: absolute; display: block; }
-.weather .cloud { top: 6px; left: 50%; width: 92px; height: 30px; margin-left: -46px; border-radius: 20px; background: #eef2f7;
-  box-shadow: 22px -12px 0 4px #eef2f7, -18px -6px 0 0 #eef2f7, 0 3px 8px rgba(0, 0, 0, .12); opacity: .95; }
-.weather .cloud.dark { background: #8d97a6; box-shadow: 22px -12px 0 4px #8d97a6, -18px -6px 0 0 #8d97a6, 0 3px 8px rgba(0, 0, 0, .2); }
+.weather .cloud { top: 12px; left: 50%; width: 46px; height: 15px; margin-left: -23px; border-radius: 10px; background: #eef2f7;
+  box-shadow: 11px -6px 0 2px #eef2f7, -9px -3px 0 0 #eef2f7, 0 2px 4px rgba(0, 0, 0, .12); opacity: .85; }
+.weather .cloud.dark { background: #8d97a6; box-shadow: 11px -6px 0 2px #8d97a6, -9px -3px 0 0 #8d97a6, 0 2px 4px rgba(0, 0, 0, .2); }
 .weather .cloud.drift { animation: w-drift 14s ease-in-out infinite alternate; }
 .weather .drop { top: 30px; width: 2px; height: 12px; border-radius: 2px; background: linear-gradient(transparent, #5fa8e8); animation: w-fall .8s linear infinite; }
 .weather .flake { top: 26px; width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 3px rgba(80, 120, 170, .6); animation: w-snow 4.5s linear infinite; }

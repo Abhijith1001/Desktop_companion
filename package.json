@@ -1,7 +1,7 @@
 {
   "name": "desktop-companion",
   "productName": "Desktop Buddy",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "A desktop pet companion with a task manager that walks onto your screen to remind you.",
   "main": "electron/main.js",
   "scripts": {
@@ -61,7 +61,14 @@
     "electronLanguages": [
       "en-US"
     ],
-    "compression": "normal"
+    "compression": "normal",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Abhijith1001",
+        "repo": "Desktop_companion"
+      }
+    ]
   },
   "license": "MIT",
   "devDependencies": {
@@ -79,6 +86,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
+    "electron-updater": "^6.8.9",
     "luxon": "^3.7.2",
     "zod": "^4.6.6"
   }
