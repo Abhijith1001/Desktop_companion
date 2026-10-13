@@ -1,0 +1,386 @@
+/* Character animations, shared by the desktop pet window and the gallery
+   previews in the task manager. Markup comes from buddyMarkup() in
+   characters.js; the state class on .buddy selects the animation:
+     idle walk run sit sleep look happy alert speak drag
+   Modifiers: .left (facing left), .upright (two-legged), .reduced, .still, .paused */
+
+.buddy { position: relative; width: 160px; height: 130px; }
+.buddy svg { width: 100%; height: 100%; overflow: visible; display: block; }
+.buddy.left svg { transform: scaleX(-1); }
+.buddy .body-g, .buddy .jump { transform-box: view-box; }
+.buddy .leg { transform-box: fill-box; transform-origin: 50% 10%; }
+.buddy .arm { transform-box: fill-box; transform-origin: 50% 8%; }
+.buddy #tail { transform-box: view-box; transform-origin: 30px 62px; animation: b-wag .5s ease-in-out infinite alternate; }
+.buddy #eye-closed, .buddy #tongue, .buddy .zzz { display: none; }
+.buddy #eye-open { transform-box: fill-box; transform-origin: center; animation: b-blink 4s infinite; }
+.buddy #head { transform-box: fill-box; transform-origin: 50% 100%; }
+
+@keyframes b-swing   { from { transform: rotate(24deg); } to { transform: rotate(-24deg); } }
+@keyframes b-bob     { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+@keyframes b-wag     { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+@keyframes b-blink   { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+@keyframes b-hop     { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-26px); } }
+@keyframes b-breathe { from { transform: translateY(12px) scaleY(.9); } to { transform: translateY(13px) scaleY(.87); } }
+@keyframes b-float   { 0% { opacity: 0; transform: translate(0, 0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(14px, -26px); } }
+@keyframes b-dangle  { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+@keyframes b-wave    { from { transform: rotate(-160deg); } to { transform: rotate(-120deg); } }
+@keyframes b-look    { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-9deg); } 60% { transform: rotate(8deg); } }
+@keyframes b-talk    { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+
+/* Human/cartoon walking gait keyframes (dynamic steps & foot lifting) */
+@keyframes b-humanWalkLegA {
+  0%   { transform: translateY(0) rotate(18deg); }            /* Front foot planted */
+  25%  { transform: translateY(-2px) rotate(0deg); }          /* Passing under body */
+  50%  { transform: translateY(-3px) rotate(-15deg); }        /* Pushing off behind */
+  70%  { transform: translateY(-10px) rotate(8deg); }         /* High step lift clearing floor */
+  85%  { transform: translateY(-5px) rotate(18deg); }         /* Reaching forward */
+  100% { transform: translateY(0) rotate(18deg); }            /* Foot strikes ground */
+}
+@keyframes b-humanWalkLegB {
+  0%   { transform: translateY(-3px) rotate(-15deg); }        /* Back foot pushing off */
+  20%  { transform: translateY(-10px) rotate(8deg); }         /* High step lift clearing floor */
+  35%  { transform: translateY(-5px) rotate(18deg); }         /* Reaching forward */
+  50%  { transform: translateY(0) rotate(18deg); }            /* Foot strikes ground */
+  75%  { transform: translateY(-2px) rotate(0deg); }          /* Passing under body */
+  100% { transform: translateY(-3px) rotate(-15deg); }        /* Pushing off behind */
+}
+@keyframes b-humanWalkArmA {
+  0%   { transform: translateY(2px) rotate(-22deg); }         /* Front arm swinging back */
+  50%  { transform: translateY(-4px) rotate(22deg); }         /* Front arm swinging forward */
+  100% { transform: translateY(2px) rotate(-22deg); }
+}
+@keyframes b-humanWalkArmB {
+  0%   { transform: translateY(-4px) rotate(22deg); }         /* Back arm swinging forward */
+  50%  { transform: translateY(2px) rotate(-22deg); }         /* Back arm swinging back */
+  100% { transform: translateY(-4px) rotate(22deg); }
+}
+@keyframes b-humanWalkBody {
+  0%   { transform: translateY(0) rotate(-1.5deg); }          /* Down on front step */
+  25%  { transform: translateY(-4px) rotate(1deg); }          /* Rise up on passing */
+  50%  { transform: translateY(0) rotate(1.5deg); }           /* Down on back step */
+  75%  { transform: translateY(-4px) rotate(-1deg); }         /* Rise up on passing */
+  100% { transform: translateY(0) rotate(-1.5deg); }
+}
+@keyframes b-humanHeadBob {
+  0%, 50%, 100% { transform: translateY(0) rotate(0deg); }
+  25%           { transform: translateY(-2px) rotate(-1.5deg); }
+  75%           { transform: translateY(-2px) rotate(1.5deg); }
+}
+
+/* Human running gait keyframes */
+@keyframes b-humanRunLegA {
+  0%   { transform: translateY(0) rotate(32deg); }
+  30%  { transform: translateY(-6px) rotate(-26deg); }
+  50%  { transform: translateY(-14px) rotate(14deg); }
+  100% { transform: translateY(0) rotate(32deg); }
+}
+@keyframes b-humanRunLegB {
+  0%   { transform: translateY(-14px) rotate(14deg); }
+  50%  { transform: translateY(0) rotate(32deg); }
+  80%  { transform: translateY(-6px) rotate(-26deg); }
+  100% { transform: translateY(-14px) rotate(14deg); }
+}
+@keyframes b-humanRunArmA {
+  0%   { transform: translateY(3px) rotate(-35deg); }
+  50%  { transform: translateY(-6px) rotate(35deg); }
+  100% { transform: translateY(3px) rotate(-35deg); }
+}
+@keyframes b-humanRunArmB {
+  0%   { transform: translateY(-6px) rotate(35deg); }
+  50%  { transform: translateY(3px) rotate(-35deg); }
+  100% { transform: translateY(-6px) rotate(35deg); }
+}
+@keyframes b-humanRunBody {
+  0%, 50%, 100% { transform: translateY(0) rotate(5deg); }
+  25%, 75%      { transform: translateY(-7px) rotate(6.5deg); }
+}
+
+/* walk / run (four legs) */
+.buddy.walk .leg, .buddy.run .leg { animation: b-swing .45s ease-in-out infinite alternate; }
+.buddy.walk .leg.b, .buddy.run .leg.b { animation-delay: -.45s; }
+.buddy.walk .body-g { animation: b-bob .225s ease-in-out infinite alternate; }
+.buddy.run .leg { animation-duration: .2s; }
+.buddy.run .leg.b { animation-delay: -.2s; }
+.buddy.run .body-g { animation: b-bob .1s ease-in-out infinite alternate; }
+.buddy.run #tail { animation-duration: .15s; }
+
+/* sit */
+.buddy.sit .body-g { transform-origin: 40px 112px; transform: rotate(-14deg); }
+.buddy.sit .leg.back { transform: scaleY(.55); }
+
+/* sleep */
+.buddy.sleep .body-g { transform-origin: 70px 114px; animation: b-breathe 2s ease-in-out infinite alternate; }
+.buddy.sleep .leg { transform: scaleY(.35); }
+.buddy.sleep #eye-open { display: none; }
+.buddy.sleep #eye-closed, .buddy.sleep .zzz { display: inline; }
+.buddy.sleep #tail { animation: none; transform: rotate(40deg); }
+.buddy .zzz text { animation: b-float 2.4s linear infinite; }
+.buddy .zzz text:nth-child(2) { animation-delay: .8s; }
+.buddy .zzz text:nth-child(3) { animation-delay: 1.6s; }
+
+/* look around */
+.buddy.look #head { animation: b-look 3s ease-in-out infinite; }
+
+/* speak */
+.buddy.speak #tongue { display: inline; animation: b-talk .3s ease-in-out infinite; }
+.buddy.speak #head { animation: b-talk .6s ease-in-out infinite; }
+
+/* celebrate / reminder */
+.buddy.happy .jump, .buddy.alert .jump { transform-origin: 80px 120px; animation: b-hop .55s ease-in-out infinite; }
+.buddy.happy #tongue, .buddy.alert #tongue { display: inline; }
+.buddy.happy #tail, .buddy.alert #tail { animation-duration: .15s; }
+.buddy.alert .leg { animation: b-swing .2s ease-in-out infinite alternate; }
+.buddy.happy .arm.b, .buddy.alert .arm.b { animation: b-wave .25s ease-in-out infinite alternate; }
+
+/* ---- Emotion & Physics States ---- */
+
+/* 1. Angry Reaction (single click poke) */
+@keyframes b-angryStomp {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  20% { transform: translateY(-4px) rotate(-3deg); }
+  45% { transform: translateY(2px) rotate(3deg); }
+  70% { transform: translateY(-2px) rotate(-1deg); }
+}
+@keyframes b-angryHead {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-9deg); }
+  50% { transform: rotate(8deg); }
+  75% { transform: rotate(-5deg); }
+}
+@keyframes b-angryTail {
+  from { transform: rotate(-24deg); }
+  to { transform: rotate(32deg); }
+}
+.buddy.angry .jump { animation: b-angryStomp .35s ease-in-out infinite; }
+.buddy.angry #head { animation: b-angryHead .35s ease-in-out infinite; }
+.buddy.angry #eye-open { transform: scaleY(0.55) scaleX(0.85); transform-origin: center; }
+.buddy.angry #tail { animation: b-angryTail .12s ease-in-out infinite alternate; }
+.buddy.angry .leg { transform: scaleY(0.92); }
+
+/* 2. Dragging (lifted in air with mouse-tilt reaction) */
+@keyframes b-liftFloat {
+  0% { transform: translateY(-5px) rotate(var(--drag-tilt, 0deg)); }
+  100% { transform: translateY(3px) rotate(var(--drag-tilt, 0deg)); }
+}
+@keyframes b-dangleLegA {
+  0% { transform: translateY(0) rotate(-14deg); }
+  100% { transform: translateY(5px) rotate(18deg); }
+}
+@keyframes b-dangleLegB {
+  0% { transform: translateY(5px) rotate(16deg); }
+  100% { transform: translateY(0) rotate(-16deg); }
+}
+@keyframes b-dangleArmA {
+  0% { transform: translateY(-3px) rotate(-35deg); }
+  100% { transform: translateY(3px) rotate(15deg); }
+}
+@keyframes b-dangleArmB {
+  0% { transform: translateY(3px) rotate(20deg); }
+  100% { transform: translateY(-3px) rotate(-30deg); }
+}
+@keyframes b-scaredTongue {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(3px); }
+}
+.buddy.drag .jump { transform-origin: 80px 40px; animation: b-liftFloat .6s ease-in-out infinite alternate; }
+.buddy.drag #eye-open { transform: scale(1.22); transform-origin: center; }
+.buddy.drag #tongue { display: inline; animation: b-scaredTongue .25s ease-in-out infinite alternate; }
+.buddy.drag .leg:not(.b) { animation: b-dangleLegA .55s ease-in-out infinite alternate; }
+.buddy.drag .leg.b { animation: b-dangleLegB .55s ease-in-out infinite alternate; }
+.buddy.drag .arm:not(.b) { animation: b-dangleArmA .55s ease-in-out infinite alternate; }
+.buddy.drag .arm.b { animation: b-dangleArmB .55s ease-in-out infinite alternate; }
+.buddy.drag #tail { animation: b-wag .2s ease-in-out infinite alternate; }
+.buddy.drag.fast-drag .jump { transform: translateY(0) rotate(var(--drag-tilt, 0deg)) scaleX(1.1) scaleY(0.92); }
+.buddy.drag.fast-drag #eye-open { transform: scale(1.38); }
+
+/* 3. Falling (high release under gravity) */
+@keyframes b-fallBody {
+  0% { transform: rotate(-5deg); }
+  100% { transform: rotate(5deg); }
+}
+@keyframes b-flailLegA {
+  0% { transform: translateY(-6px) rotate(-28deg); }
+  100% { transform: translateY(3px) rotate(32deg); }
+}
+@keyframes b-flailLegB {
+  0% { transform: translateY(3px) rotate(32deg); }
+  100% { transform: translateY(-6px) rotate(-28deg); }
+}
+@keyframes b-flailArmA {
+  0% { transform: translateY(-8px) rotate(-140deg); }
+  100% { transform: translateY(-2px) rotate(-85deg); }
+}
+@keyframes b-flailArmB {
+  0% { transform: translateY(-2px) rotate(-85deg); }
+  100% { transform: translateY(-8px) rotate(-140deg); }
+}
+.buddy.falling .jump { animation: b-fallBody .16s ease-in-out infinite alternate; }
+.buddy.falling #eye-open { transform: scale(1.35); transform-origin: center; }
+.buddy.falling #tongue { display: inline; }
+.buddy.falling .leg:not(.b) { animation: b-flailLegA .14s ease-in-out infinite alternate; }
+.buddy.falling .leg.b { animation-delay: -.07s; animation: b-flailLegB .14s ease-in-out infinite alternate; }
+.buddy.falling .arm:not(.b) { animation: b-flailArmA .14s ease-in-out infinite alternate; }
+.buddy.falling .arm.b { animation: b-flailArmB .14s ease-in-out infinite alternate; }
+
+/* 4. Impact (ground collision squash & shake) */
+@keyframes b-impactSquash {
+  0% { transform: scaleY(0.62) scaleX(1.42) translateY(14px); }
+  60% { transform: scaleY(0.72) scaleX(1.28) translateY(8px); }
+  100% { transform: scaleY(0.85) scaleX(1.12) translateY(4px); }
+}
+@keyframes b-impactShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+.buddy.impact .jump { animation: b-impactShake .3s ease-in-out; }
+.buddy.impact .body-g { transform-box: fill-box; transform-origin: 50% 100%; animation: b-impactSquash .35s cubic-bezier(.1, 1.6, .3, 1) forwards; }
+.buddy.impact #eye-open { transform: scaleY(0.4) scaleX(1.3); }
+
+/* 5. Dizzy (stars & head wobble after drop) */
+@keyframes b-dizzyWobble {
+  0% { transform: translateY(2px) rotate(-7deg); }
+  50% { transform: translateY(-2px) rotate(7deg); }
+  100% { transform: translateY(2px) rotate(-7deg); }
+}
+@keyframes b-dizzyHead {
+  0% { transform: rotate(-10deg) translate(-2px, 1px); }
+  50% { transform: rotate(10deg) translate(2px, -1px); }
+  100% { transform: rotate(-10deg) translate(-2px, 1px); }
+}
+.buddy.dizzy .jump { animation: b-dizzyWobble .85s ease-in-out infinite; }
+.buddy.dizzy #head { animation: b-dizzyHead .85s ease-in-out infinite; }
+.buddy.dizzy #eye-open { display: none; }
+.buddy.dizzy #eye-closed { display: inline; transform: rotate(15deg); }
+.buddy.dizzy .leg { transform: scaleY(0.88); }
+
+/* 6. Recovering (shake-off vibration returning to idle) */
+@keyframes b-shakeOff {
+  0% { transform: scale(1) rotate(0); }
+  20% { transform: scale(1.04) rotate(-8deg); }
+  40% { transform: scale(0.96) rotate(8deg); }
+  60% { transform: scale(1.02) rotate(-5deg); }
+  80% { transform: scale(0.98) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.buddy.recovering .jump { animation: b-shakeOff .5s ease-in-out; }
+.buddy.recovering #eye-open { display: inline; }
+.buddy.recovering #eye-closed { display: none; }
+
+/* ---- two-legged characters: human walk, crouch instead of lying down ---- */
+.buddy.upright #tail { transform-origin: 64px 94px; }
+.buddy.upright.sit .body-g, .buddy.upright.sleep .body-g { transform-origin: 80px 116px; transform: translateY(15px); animation: none; }
+.buddy.upright.sit .leg, .buddy.upright.sleep .leg { transform: scaleY(.55); }
+.buddy.upright.sleep #head { transform: rotate(14deg); }
+.buddy.upright.sleep #tail { transform: none; }
+.buddy.upright .zzz { transform: translate(-46px, 6px); }
+/* Upright human/cartoon walking */
+.buddy.upright.walk .body-g { transform-box: fill-box; transform-origin: 50% 90%; animation: b-humanWalkBody .65s ease-in-out infinite; }
+.buddy.upright.walk .leg { transform-box: fill-box; transform-origin: 50% 12%; animation: b-humanWalkLegA .65s ease-in-out infinite; }
+.buddy.upright.walk .leg.b { animation-name: b-humanWalkLegB; }
+.buddy.upright.walk .arm { transform-box: fill-box; transform-origin: 50% 10%; animation: b-humanWalkArmA .65s ease-in-out infinite; }
+.buddy.upright.walk .arm.b { animation-name: b-humanWalkArmB; }
+.buddy.upright.walk #head { animation: b-humanHeadBob .65s ease-in-out infinite; }
+.buddy.upright.walk #tail { animation-duration: .325s; }
+
+/* Upright human/cartoon running */
+.buddy.upright.run .body-g { transform-box: fill-box; transform-origin: 50% 90%; animation: b-humanRunBody .35s ease-in-out infinite; }
+.buddy.upright.run .leg { transform-box: fill-box; transform-origin: 50% 12%; animation: b-humanRunLegA .35s ease-in-out infinite; }
+.buddy.upright.run .leg.b { animation-name: b-humanRunLegB; }
+.buddy.upright.run .arm { transform-box: fill-box; transform-origin: 50% 10%; animation: b-humanRunArmA .35s ease-in-out infinite; }
+.buddy.upright.run .arm.b { animation-name: b-humanRunArmB; }
+.buddy.upright.run #head { animation: b-humanHeadBob .35s ease-in-out infinite; }
+
+/* ---- Cartoon feel: squash & stretch, overshoot, follow-through ---- */
+/* Celebrate hop: crouch (anticipation) -> stretch in the air -> squash on landing. */
+@keyframes b-cartoonHop {
+  0%   { transform: translateY(0) scale(1, 1); }
+  15%  { transform: translateY(2px) scale(1.14, .84); }
+  40%  { transform: translateY(-30px) scale(.9, 1.12); }
+  62%  { transform: translateY(-6px) scale(.96, 1.05); }
+  78%  { transform: translateY(0) scale(1.18, .82); }
+  90%  { transform: translateY(0) scale(.96, 1.04); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+.buddy.happy .jump, .buddy.alert .jump { transform-origin: 80px 116px; animation: b-cartoonHop .7s cubic-bezier(.34, 1.4, .64, 1) infinite; }
+/* Tail lags behind the body for follow-through. */
+.buddy.walk #tail, .buddy.run #tail { animation-delay: .08s; }
+/* Springy head turns instead of a flat ease. */
+.buddy.look #head { animation-timing-function: cubic-bezier(.34, 1.56, .64, 1); }
+
+/* ---- Mannerisms: short idle quirks added by pet.js as .m-<name> ---- */
+.buddy .fx > * { display: none; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes b-fxPop   { 0% { transform: scale(0); opacity: 0; } 20% { transform: scale(1.4); opacity: 1; } 35%, 85% { transform: scale(1); opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
+@keyframes b-fxDrip  { 0% { transform: translateY(-4px); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(14px); opacity: 0; } }
+@keyframes b-fxDash  { 0% { transform: translateX(10px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateX(-12px); opacity: 0; } }
+
+/* Double-take: glance away, freeze, SNAP back with wide eyes and a "!" */
+@keyframes b-dtHead {
+  0%, 100% { transform: rotate(0); }
+  18%, 40% { transform: rotate(-12deg); }
+  48%      { transform: rotate(10deg) translateY(-6px); }
+  58%      { transform: rotate(-4deg) translateY(-3px); }
+  70%      { transform: rotate(0) translateY(0); }
+}
+@keyframes b-dtBody { 0%, 42%, 100% { transform: scale(1, 1); } 48% { transform: translateY(-4px) scale(.92, 1.1); } 58% { transform: scale(1.06, .95); } 70% { transform: scale(1, 1); } }
+@keyframes b-dtEyes { 0%, 42%, 100% { transform: scale(1); } 48%, 85% { transform: scale(1.45); } }
+.buddy.m-doubletake #head { animation: b-dtHead 1.6s cubic-bezier(.34, 1.56, .64, 1); }
+.buddy.m-doubletake .jump { transform-origin: 80px 116px; animation: b-dtBody 1.6s ease-out; }
+.buddy.m-doubletake #eye-open { animation: b-dtEyes 1.6s ease-out; }
+.buddy.m-doubletake .fx-bang { display: inline; animation: b-fxPop 1s .75s both; }
+
+/* Foot tap: impatient tapping with arms "crossed" and a smug head tilt */
+@keyframes b-tap { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-22deg) translateY(-3px); } }
+.buddy.m-foottap .leg:not(.b) { animation: b-tap .22s ease-in-out 8; }
+.buddy.m-foottap .arm { transform: rotate(-70deg); }
+.buddy.m-foottap .arm.b { transform: rotate(70deg); }
+.buddy.m-foottap #head { transform: rotate(-6deg); transition: transform .2s cubic-bezier(.34, 1.56, .64, 1); }
+.buddy.m-foottap #tail { animation-duration: .15s; }
+
+/* Yawn & stretch: big inhale stretch up, eyes shut, then a satisfied squash */
+@keyframes b-yawnBody {
+  0%, 100% { transform: scale(1, 1); }
+  15%      { transform: translateY(3px) scale(1.08, .92); }
+  45%, 65% { transform: translateY(-6px) scale(.9, 1.14); }
+  80%      { transform: scale(1.1, .9); }
+  90%      { transform: scale(.98, 1.02); }
+}
+@keyframes b-yawnArms { 0%, 100% { transform: rotate(0); } 40%, 70% { transform: rotate(-165deg); } }
+.buddy.m-yawn .jump { transform-origin: 80px 116px; animation: b-yawnBody 2.2s cubic-bezier(.34, 1.3, .64, 1); }
+.buddy.m-yawn .arm { animation: b-yawnArms 2.2s ease-in-out; }
+.buddy.m-yawn #eye-open { display: none; }
+.buddy.m-yawn #eye-closed, .buddy.m-yawn #tongue { display: inline; }
+
+/* Shifty: sneaky side-to-side eye glances with a nervous sweat drop */
+@keyframes b-shiftEyes { 0%, 100% { transform: translateX(0); } 20%, 40% { transform: translateX(-3px); } 55%, 80% { transform: translateX(3px); } }
+@keyframes b-shiftCrouch { 0%, 100% { transform: scale(1, 1); } 15%, 85% { transform: translateY(3px) scale(1.04, .94); } }
+.buddy.m-shifty #eye-open { animation: b-shiftEyes 1.8s steps(1, end); }
+.buddy.m-shifty .jump { transform-origin: 80px 116px; animation: b-shiftCrouch 1.8s ease-in-out; }
+.buddy.m-shifty .fx-sweat { display: inline; animation: b-fxDrip 1.4s .3s both; }
+
+/* Zip: anticipation lean back, then a quick dash pose with speed lines */
+@keyframes b-zip {
+  0%, 100% { transform: translateX(0) skewX(0) scale(1, 1); }
+  25%      { transform: translateX(-6px) skewX(10deg) scale(1.06, .94); }
+  40%      { transform: translateX(12px) skewX(-18deg) scale(1.12, .9); }
+  60%      { transform: translateX(-3px) skewX(6deg); }
+  75%      { transform: translateX(1px) skewX(-2deg); }
+}
+.buddy.m-zip .jump { transform-origin: 80px 116px; animation: b-zip 1.1s cubic-bezier(.34, 1.56, .64, 1); }
+.buddy.m-zip .fx-lines { display: inline; animation: b-fxDash .5s .4s both; }
+
+/* Huh?: puzzled head tilt with a "?" pop */
+@keyframes b-huhHead { 0%, 100% { transform: rotate(0); } 25%, 80% { transform: rotate(14deg); } }
+.buddy.m-huh #head { animation: b-huhHead 1.6s cubic-bezier(.34, 1.56, .64, 1); }
+.buddy.m-huh .fx-huh { display: inline; animation: b-fxPop 1.3s .2s both; }
+
+/* ---- accessibility / performance ---- */
+.buddy.reduced *, .buddy.reduced .jump { animation-duration: 0s !important; animation-iteration-count: 1 !important; }
+.buddy.reduced #eye-open { animation: none !important; }
+.buddy.still * { animation: none !important; }
+.buddy.paused * { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) {
+  .buddy * { animation: none !important; }
+}

@@ -1,0 +1,72 @@
+{
+  "name": "desktop-companion",
+  "productName": "Desktop Buddy",
+  "version": "2.0.0",
+  "description": "A desktop pet companion with a task manager that walks onto your screen to remind you.",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "build": "vite build",
+    "start": "vite build && node scripts/run-electron.js",
+    "test": "vitest run tests/unit tests/integration",
+    "test:unit": "vitest run tests/unit",
+    "test:server": "cd server && npm test",
+    "test:all": "npm test && npm run test:server",
+    "dist": "vite build && electron-builder --win",
+    "server": "cd server && npm start",
+    "test:e2e": "vite build && vitest run tests/e2e"
+  },
+  "build": {
+    "appId": "com.devwerks.desktopbuddy",
+    "productName": "Desktop Buddy",
+    "files": [
+      "electron/**/*",
+      "shared/**/*",
+      "dist/**/*",
+      "package.json",
+      "!**/*.test.js"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
+    },
+    "asarUnpack": [
+      "electron/capture/*.ps1"
+    ]
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
+    "playwright-core": "^1.64.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3",
+    "zustand": "^5.0.15"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "luxon": "^3.7.2",
+    "zod": "^4.6.6"
+  }
+}

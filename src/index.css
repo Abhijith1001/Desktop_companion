@@ -1,0 +1,59 @@
+@import "tailwindcss";
+@import "../electron/pet/buddy.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-200: #fdd8b0;
+  --color-brand-300: #f8bb7c;
+  --color-brand-400: #f0a35d;
+  --color-brand-500: #e8994a;
+  --color-brand-600: #cf7a2c;
+  --color-brand-700: #a75d1f;
+  --color-brand-800: #7c4519;
+  --color-brand-900: #4e2c12;
+}
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-stone-50 text-stone-900 antialiased dark:bg-stone-950 dark:text-stone-100;
+  }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-brand-500; }
+  ::selection { @apply bg-brand-200 text-stone-900; }
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+@utility btn-primary {
+  @apply btn bg-brand-500 text-stone-950 hover:bg-brand-400;
+}
+@utility btn-ghost {
+  @apply btn text-stone-600 hover:bg-stone-200/70 dark:text-stone-300 dark:hover:bg-stone-800;
+}
+@utility btn-outline {
+  @apply btn border border-stone-300 bg-white hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-900 dark:hover:bg-stone-800;
+}
+@utility btn-danger {
+  @apply btn bg-red-600 text-white hover:bg-red-500;
+}
+@utility input {
+  @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-stone-700 dark:bg-stone-900;
+}
+@utility label {
+  @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400;
+}
+@utility card {
+  @apply rounded-2xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; }
+}

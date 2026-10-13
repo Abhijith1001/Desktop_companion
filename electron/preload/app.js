@@ -1,0 +1,88 @@
+// Bridge for the task manager window. Exposes named methods only; the
+// renderer never sees ipcRenderer, Node or the database.
+const { contextBridge, ipcRenderer } = require('electron');
+
+const invoke = (ch) => (...args) => ipcRenderer.invoke(ch, ...args);
+const on = (ch) => (fn) => {
+  const handler = (_e, payload) => fn(payload);
+  ipcRenderer.on(ch, handler);
+  return () => ipcRenderer.removeListener(ch, handler);
+};
+
+contextBridge.exposeInMainWorld('buddy', {
+  tasks: {
+    list: invoke('tasks:list'),
+    get: invoke('tasks:get'),
+    create: invoke('tasks:create'),
+    update: invoke('tasks:update'),
+    remove: invoke('tasks:delete'),
+    complete: invoke('tasks:complete'),
+    reopen: invoke('tasks:reopen'),
+    snooze: invoke('tasks:snooze'),
+    onChange: on('tasks:changed'),
+    calendar: invoke('calendar:range'),
+  },
+  settings: {
+    get: invoke('settings:get'),
+    update: invoke('settings:update'),
+    onChange: on('settings:changed'),
+  },
+  reminders: {
+    pause: invoke('reminders:pause'),
+    status: invoke('reminders:status'),
+  },
+  buddy: {
+    show: invoke('buddy:show'),
+    hide: invoke('buddy:hide'),
+    preview: invoke('buddy:preview'),
+  },
+  sync: {
+    status: invoke('sync:status'),
+    now: invoke('sync:now'),
+    signIn: invoke('sync:sign-in'),
+    signOut: invoke('sync:sign-out'),
+    exportData: invoke('account:export'),
+    deleteAccount: invoke('account:delete'),
+    onStatus: on('sync:status'),
+  },
+  bookmarks: {
+    list: invoke('bookmarks:list'),
+    get: invoke('bookmarks:get'),
+    create: invoke('bookmarks:create'),
+    update: invoke('bookmarks:update'),
+    remove: invoke('bookmarks:delete'),
+    clearAll: invoke('bookmarks:clear'),
+    facets: invoke('bookmarks:facets'),
+    copy: invoke('bookmarks:copy'),
+    openSource: invoke('bookmarks:open-source'),
+    onChange: on('bookmarks:changed'),
+  },
+  capture: {
+    selection: invoke('capture:selection'),
+    ocr: invoke('capture:ocr'),
+    pending: invoke('capture:pending'),
+    inspectDrop: invoke('capture:inspect-drop'),
+    status: invoke('capture:status'),
+    onNew: on('capture:new'),
+    onStatus: on('capture:status'),
+  },
+  notes: {
+    list: invoke('notes:list'),
+    get: invoke('notes:get'),
+    create: invoke('notes:create'),
+    update: invoke('notes:update'),
+    remove: invoke('notes:delete'),
+    copy: invoke('notes:copy'),
+  },
+  ai: {
+    status: invoke('ai:status'),
+    setKey: invoke('ai:set-key'),
+    ask: invoke('ai:ask'),
+  },
+  app: {
+    info: invoke('app:info'),
+    openExternal: invoke('app:open-external'),
+    openLogs: invoke('app:open-logs'),
+    onNavigate: on('app:navigate'),
+  },
+});

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+release/
+server/node_modules/
+server/.env
+*.log

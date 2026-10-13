@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:">
+<link rel="stylesheet" href="buddy.css">
+<link rel="stylesheet" href="pet.css">
+</head>
+<body>
+  <div id="bubble" role="status" aria-live="polite"></div>
+  <div id="dust" class="dust-ring" aria-hidden="true">
+    <svg viewBox="0 0 160 30" style="width:100%;height:100%;overflow:visible">
+      <ellipse class="dust-p p1" cx="30" cy="18" rx="14" ry="7" fill="#b8a892"/>
+      <ellipse class="dust-p p2" cx="50" cy="14" rx="11" ry="5.5" fill="#d9cbba"/>
+      <ellipse class="dust-p p3" cx="110" cy="14" rx="11" ry="5.5" fill="#d9cbba"/>
+      <ellipse class="dust-p p4" cx="130" cy="18" rx="14" ry="7" fill="#b8a892"/>
+    </svg>
+  </div>
+  <div id="buddy" class="buddy idle" title="Double-click for tasks · drag to move · right-click for menu"></div>
+  <script src="characters.js"></script>
+  <script src="pet.js"></script>
+</body>
+</html>
