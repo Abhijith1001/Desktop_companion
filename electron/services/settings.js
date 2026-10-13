@@ -31,7 +31,7 @@ const DEFAULTS = {
   theme: 'system',               // system | light | dark
   // Text capture from other apps. Shortcuts are Electron accelerators.
   capture: { shortcut: 'Control+Shift+B', clipboardFallback: true, ocrEnabled: false, ocrShortcut: 'Control+Shift+O' },
-  sync: { enabled: false, serverUrl: 'http://localhost:4000', email: null, lastSyncAt: null, cursor: null, lastError: null },
+  sync: { enabled: false, serverUrl: 'https://desktop-buddy-server.onrender.com', email: null, lastSyncAt: null, cursor: null, lastError: null },
 };
 
 function createSettings(db) {

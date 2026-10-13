@@ -8,7 +8,7 @@ function SignInForm({ defaultUrl }) {
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [serverUrl, setServerUrl] = useState(defaultUrl || 'http://localhost:4000');
+  const [serverUrl, setServerUrl] = useState(defaultUrl || 'https://desktop-buddy-server.onrender.com');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const receive = useSync((s) => s.receive);
