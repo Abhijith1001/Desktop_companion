@@ -25,15 +25,18 @@ async function waitForWindow(app, fragment, timeout = 20_000) {
 }
 
 async function launch() {
-  const env = { ...process.env, BUDDY_USER_DATA: dataDir, BUDDY_MUTE: '1' };
+  const env = { ...process.env, BUDDY_USER_DATA: dataDir, BUDDY_MUTE: '1', BUDDY_SKIP_ONBOARDING: '1' };
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({ executablePath: require('electron'), args: ['.'], cwd: root, env });
   const pet = await waitForWindow(app, 'pet.html');
   await pet.waitForFunction(() => window.buddyMarkup && document.querySelector('#buddy svg'));
-  await pet.evaluate(() => {
+  await pet.evaluate(async () => { // double-click opens the task manager
     const b = document.getElementById('buddy');
-    b.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }));
-    window.dispatchEvent(new MouseEvent('mouseup', { button: 0, bubbles: true }));
+    for (let i = 0; i < 2; i++) {
+      b.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }));
+      window.dispatchEvent(new MouseEvent('mouseup', { button: 0, bubbles: true }));
+      await new Promise((r) => setTimeout(r, 80));
+    }
   });
   const manager = await waitForWindow(app, 'index.html');
   await manager.waitForFunction(() => !!window.buddy);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSettings, useToasts } from '../stores';
 import { api } from '../services/api';
 import { Section, Toggle, Field } from '../components/ui';
+import { navigate } from '../hooks/useRoute';
 import { allTimeZones } from '../utils/dates';
 import ShortcutInput from '../features/capture/ShortcutInput';
 
@@ -61,6 +62,90 @@ function AiSection() {
   );
 }
 
+function WeatherSection({ s, update }) {
+  const toast = useToasts((x) => x.push);
+  const w = s.weather;
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(null);
+  useEffect(() => { api.weather.current().then(setNow).catch(() => {}); return api.weather.onUpdate(setNow); }, []);
+
+  const run = async (fn) => {
+    setBusy(true);
+    try { await fn(); } catch (err) { toast(err.message, 'error'); } finally { setBusy(false); }
+  };
+  const choose = (location) => { update({ weather: { location } }); setResults(null); setQuery(''); toast(`Weather set to ${location.name}`); };
+
+  return (
+    <Section title="Weather" description="Your buddy shows rain, snow, fog or sunshine based on the weather where you are. Only the location you pick is sent to Open-Meteo (free, no account).">
+      <Toggle label="Show local weather" checked={w.enabled} onChange={(v) => update({ weather: { enabled: v } })} />
+      {w.enabled && (
+        <>
+          <p className="py-2 text-sm">
+            {w.location
+              ? <>📍 <strong>{w.location.name}</strong>{w.location.country ? `, ${w.location.country}` : ''}{now ? ` · ${now.emoji} ${now.temp}°${now.unit}, ${now.description}` : ''}</>
+              : 'No location yet — search for your city or use your approximate location.'}
+          </p>
+          <form className="flex flex-wrap items-end gap-2 py-2" onSubmit={(e) => { e.preventDefault(); run(async () => setResults(await api.weather.search(query))); }}>
+            <Field label="City" htmlFor="wx-city">
+              <input id="wx-city" className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. Bengaluru" autoComplete="off" />
+            </Field>
+            <button type="submit" className="btn-primary" disabled={busy || query.trim().length < 2}>Search</button>
+            <button type="button" className="btn-outline" disabled={busy}
+              title="Uses your internet address to estimate your city"
+              onClick={() => run(async () => choose(await api.weather.locate()))}>📍 Use my location</button>
+            <select aria-label="Temperature unit" className="input w-auto" value={w.unit} onChange={(e) => update({ weather: { unit: e.target.value } })}>
+              <option value="C">°C</option><option value="F">°F</option>
+            </select>
+          </form>
+          {results && (
+            <ul className="py-1 text-sm">
+              {results.length === 0 && <li className="text-stone-500">No places found.</li>}
+              {results.map((r) => (
+                <li key={`${r.lat},${r.lon}`}>
+                  <button type="button" className="btn-ghost text-left" onClick={() => choose(r)}>{r.name}{r.country ? `, ${r.country}` : ''}</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </Section>
+  );
+}
+
+function BuddyCareSection({ s, update }) {
+  const toast = useToasts((x) => x.push);
+  const [stats, setStats] = useState(null);
+  useEffect(() => { api.buddy.stats().then(setStats).catch(() => {}); return api.buddy.onStats(setStats); }, []);
+  const feed = async () => {
+    try {
+      const r = await api.buddy.feed();
+      setStats(r);
+      if (!r.ok) toast('No treats yet — complete a task to earn one!');
+    } catch (err) { toast(err.message, 'error'); }
+  };
+  const moodText = { happy: '😊 Happy', ok: '🙂 Content', sulky: '😤 Sulking' };
+  return (
+    <Section title="Buddy" description="Complete tasks to earn treats. Your buddy is happiest when tasks get done, and sulks a little while some are overdue.">
+      {stats && (
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 py-3 text-sm">
+          <span>Mood: <strong>{moodText[stats.level]}</strong></span>
+          <span>Fullness: <strong>{stats.fullness}%</strong>{stats.hungry ? ' (hungry!)' : ''}</span>
+          <span>Treats: <strong>🍪 {stats.treats}</strong></span>
+          {stats.overdue > 0 && <span className="text-red-600">{stats.overdue} overdue</span>}
+          <button type="button" className="btn-primary ml-auto" disabled={!stats.treats} onClick={feed}>Feed a treat</button>
+        </div>
+      )}
+      <Toggle label="Watch and chase the cursor" description="Looks at the mouse when it's close and sometimes runs after it"
+        checked={s.followCursor} onChange={(v) => update({ followCursor: v })} />
+      <Toggle label="Sit on top of windows" description="Now and then jumps up onto the active window and sits on its edge"
+        checked={s.perchOnWindows} onChange={(v) => update({ perchOnWindows: v })} />
+    </Section>
+  );
+}
+
 function useVoices() {
   const [voices, setVoices] = useState([]);
   useEffect(() => {
@@ -96,6 +181,9 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <h1 className="text-2xl font-bold">Settings</h1>
+
+      <BuddyCareSection s={s} update={update} />
+      <WeatherSection s={s} update={update} />
 
       <Section title="Reminders">
         <div className="flex flex-wrap items-center gap-2 py-3">
@@ -191,6 +279,10 @@ export default function SettingsPage() {
           checked={s.startWithWindows} onChange={(v) => update({ startWithWindows: v })} />
         <Toggle label="Start minimized" description="When started with Windows, keep the buddy hidden (tray only)"
           checked={s.startHidden} onChange={(v) => update({ startHidden: v })} />
+        <div className="flex items-center justify-between gap-4 py-3">
+          <span><span className="block text-sm font-medium">Welcome tour</span><span className="block text-xs text-stone-500">Meet your buddy again: pick a look, a name and learn the shortcuts</span></span>
+          <button type="button" className="btn-outline shrink-0" onClick={() => navigate('/welcome')}>Replay tour</button>
+        </div>
         <div className="grid grid-cols-2 gap-4 py-3">
           <Field label="Theme" htmlFor="theme">
             <select id="theme" className="input" value={s.theme} onChange={(e) => update({ theme: e.target.value })}>

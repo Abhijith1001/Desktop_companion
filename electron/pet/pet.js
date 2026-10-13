@@ -14,13 +14,20 @@
   let hovering = false;
   let sayTimer = null;
   let mannerism = '';
+  let mood = { level: 'ok', hungry: false };
+  let decor = { season: null, weather: null };
+  let look = null;          // { dx, dy, inside } cursor offset from the head, CSS px
+  let charPayload = { id: 'dog', accessory: null };
 
   // ---------- drawing
   function render() {
     const c = window.CHARACTERS[character] || window.CHARACTERS.dog;
     buddy.className = ['buddy', css, dir < 0 ? 'left' : '', c.upright ? 'upright' : '',
       options.animation === 'reduced' ? 'reduced' : '', options.animation === 'off' ? 'still' : '',
-      options.paused ? 'paused' : '', mannerism ? `m-${mannerism}` : ''].filter(Boolean).join(' ');
+      options.paused ? 'paused' : '', mannerism ? `m-${mannerism}` : '',
+      `mood-${mood.level}`, mood.hungry ? 'hungry' : '', hovering && !dragging ? 'hovered' : '',
+      look?.inside ? 'curious' : '', decor.season ? `season-${decor.season}` : ''].filter(Boolean).join(' ');
+    applyLook();
   }
 
   // ---------- mannerisms: short cartoon quirks played now and then while idle
@@ -44,10 +51,59 @@
     mannerism = '';
     scheduleMannerism();
   }
-  function setCharacter(id) {
+  function setCharacter(p) {
+    charPayload = typeof p === 'string' ? { id: p, accessory: null } : { accessory: null, ...p };
+    const { id, accessory } = charPayload;
     character = window.CHARACTERS[id] ? id : 'dog';
-    buddy.innerHTML = window.buddyMarkup(character);
+    // December: a Santa hat, unless an unlocked accessory is being worn.
+    const wear = accessory || (decor.season === 'christmas' ? 'santa' : null);
+    buddy.innerHTML = window.buddyMarkup(character, wear);
+    setupLook();
     render();
+  }
+
+  // ---------- watching the cursor
+  // The head and eyes are wrapped in extra groups so the look can be layered
+  // on top of whatever animation the head itself is playing.
+  let lookHead = null;
+  let lookEyes = null;
+  function wrap(node, cls) {
+    if (!node) return null;
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', cls);
+    node.parentNode.insertBefore(g, node);
+    g.appendChild(node);
+    return g;
+  }
+  function setupLook() {
+    const head = buddy.querySelector('#head');
+    lookHead = wrap(head, 'look-head');
+    lookEyes = wrap(buddy.querySelector('#eye-open'), 'look-eyes');
+    if (lookHead) {
+      try {
+        const b = head.getBBox();
+        lookHead.style.transformOrigin = `${b.x + b.width / 2}px ${b.y + b.height}px`;
+      } catch { /* not rendered yet */ }
+    }
+  }
+  const STILL_HEAD = ['sleep', 'drag', 'falling', 'impact', 'dizzy', 'recovering', 'angry', 'eat'];
+  function applyLook() {
+    if (!lookHead) return;
+    if (!look || STILL_HEAD.includes(css) || options.animation === 'off') {
+      lookHead.style.transform = '';
+      if (lookEyes) lookEyes.style.transform = '';
+      return;
+    }
+    // In the SVG, +x is always "in front" (the whole picture is mirrored when
+    // facing left), so flip the horizontal offset into that space.
+    const fx = look.dx * dir;
+    const dist = Math.max(1, Math.hypot(fx, look.dy));
+    const clamp = (v, m) => Math.max(-m, Math.min(m, v));
+    const tilt = clamp((Math.atan2(look.dy, Math.max(Math.abs(fx), 25)) * 180) / Math.PI * 0.55, -20, 20);
+    const shiftX = clamp((fx / dist) * 3, -3, 3);
+    const shiftY = clamp((look.dy / dist) * 2.5, -2.5, 2.5);
+    lookHead.style.transform = `translate(${shiftX.toFixed(1)}px, ${shiftY.toFixed(1)}px) rotate(${tilt.toFixed(1)}deg)`;
+    if (lookEyes) lookEyes.style.transform = `translate(${clamp((fx / dist) * 2.5, -2.5, 2.5).toFixed(1)}px, ${clamp((look.dy / dist) * 2.2, -2.2, 2.2).toFixed(1)}px)`;
   }
 
   // ---------- click-through: only the buddy and bubble catch the mouse
@@ -56,14 +112,36 @@
     el.addEventListener('mouseenter', () => {
       hovering = true;
       setIgnore(false);
-      if (el === buddy) showHint();
+      if (el === buddy) { showHint(); render(); }
     });
     el.addEventListener('mouseleave', () => {
       hovering = false;
       if (!dragging) setIgnore(true);
-      if (el === buddy) hideHint();
+      if (el === buddy) { hideHint(); render(); }
     });
   }
+
+  // ---------- petting: stroking back and forth over the buddy
+  let stroke = { lastX: null, sign: 0, turns: 0, travel: 0, since: 0 };
+  let lastPetted = 0;
+  buddy.addEventListener('mousemove', (e) => {
+    if (dragging || alert) return;
+    const now = performance.now();
+    if (stroke.lastX == null || now - stroke.since > 1600) stroke = { lastX: e.clientX, sign: 0, turns: 0, travel: 0, since: now };
+    const dx = e.clientX - stroke.lastX;
+    stroke.lastX = e.clientX;
+    if (Math.abs(dx) < 2) return;
+    stroke.travel += Math.abs(dx);
+    const sign = Math.sign(dx);
+    if (stroke.sign && sign !== stroke.sign) stroke.turns++;
+    stroke.sign = sign;
+    if (stroke.turns >= 3 && stroke.travel > 70 && now - lastPetted > 2500) {
+      lastPetted = now;
+      stroke = { lastX: null, sign: 0, turns: 0, travel: 0, since: 0 };
+      hideHint();
+      api.send('pet:petted');
+    }
+  });
 
   buddy.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
@@ -135,7 +213,9 @@
     let hint;
     try { hint = await api.invoke('pet:hint'); } catch { return; }
     if (!hovering || alert || dragging) return;
-    showBubble([el('div', 'label', hint.label), el('div', 'title', hint.title)], { simple: true });
+    const parts = [el('div', 'label', hint.label), el('div', 'title', hint.title)];
+    if (hint.stats) parts.push(el('div', 'stats', hint.stats));
+    showBubble(parts, { simple: true });
   }
   function hideHint() { if (!alert && !sayTimer) hideBubble(); }
 
@@ -347,6 +427,108 @@
   });
   api.on('pet:impact-sound', impactSound);
   api.on('pet:angry-sound', angrySound);
+
+  // ---------- cursor watching, petting, feeding, mood
+  api.on('pet:look', (v) => {
+    const wasInside = !!look?.inside;
+    look = v;
+    if (wasInside !== !!v?.inside) render(); else applyLook();
+  });
+  api.on('pet:mood', (m) => { mood = { level: 'ok', hungry: false, ...m }; render(); });
+  api.on('pet:mannerism', (name) => {
+    if (!MANNERISMS[name] || mannerism || dragging || alert) return;
+    clearTimeout(mannerismTimer);
+    mannerism = name;
+    render();
+    mannerismTimer = setTimeout(() => { mannerism = ''; render(); scheduleMannerism(); }, MANNERISMS[name]);
+  });
+  let heartsTimer = null;
+  api.on('pet:hearts', () => {
+    buddy.classList.add('hearts');
+    clearTimeout(heartsTimer);
+    heartsTimer = setTimeout(() => buddy.classList.remove('hearts'), 1800);
+  });
+  api.on('pet:purr', () => tones([[110, 0, 0.25, 'sine'], [123, 0.22, 0.3, 'sine'], [988, 0.05, 0.12, 'triangle']], 0.25));
+  api.on('pet:eat', () => tones([[300, 0.55, 0.06, 'square'], [260, 0.85, 0.06, 'square'], [300, 1.15, 0.06, 'square'], [660, 1.6, 0.18, 'sine']], 0.12));
+
+  // Short synthesized sound: [frequency, start offset s, length s, wave].
+  function tones(list, level) {
+    if (!options.sound) return;
+    try {
+      const ctx = new AudioContext();
+      const vol = Math.max(0, Math.min(1, options.volume)) * level;
+      for (const [f, at, len, type] of list) {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        const t0 = ctx.currentTime + at;
+        o.type = type;
+        o.frequency.setValueAtTime(f, t0);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+        o.connect(g).connect(ctx.destination);
+        o.start(t0);
+        o.stop(t0 + len + 0.02);
+      }
+      setTimeout(() => ctx.close(), 2500);
+    } catch { /* sound is optional */ }
+  }
+
+  // ---------- season & weather
+  // Weather is drawn behind the buddy: rain, snow, a drifting cloud, fog or a
+  // little sun. Particles are DOM nodes (inline style attributes are blocked by
+  // the CSP, CSSOM properties are fine).
+  const weatherEl = document.createElement('div');
+  weatherEl.id = 'weather';
+  weatherEl.setAttribute('aria-hidden', 'true');
+  document.body.insertBefore(weatherEl, buddy);
+  let weatherKey = '';
+  function renderWeather() {
+    const w = decor.weather;
+    const kind = w ? w.kind : '';
+    const key = `${kind}|${w?.day}`;
+    if (key === weatherKey) return;
+    weatherKey = key;
+    weatherEl.className = kind ? `weather w-${kind}${w.day ? '' : ' night'}` : 'weather';
+    weatherEl.replaceChildren();
+    const add = (cls, n = 1, style) => {
+      for (let i = 0; i < n; i++) {
+        const d = document.createElement('i');
+        d.className = cls;
+        if (style) style(d.style, i, n);
+        weatherEl.append(d);
+      }
+    };
+    if (kind === 'rain' || kind === 'storm') {
+      add('cloud dark');
+      add('drop', kind === 'storm' ? 26 : 18, (s, i, n) => {
+        s.left = `${(i / n) * 100 + Math.random() * 4}%`;
+        s.animationDelay = `${(-Math.random() * 1.2).toFixed(2)}s`;
+        s.animationDuration = `${(0.6 + Math.random() * 0.35).toFixed(2)}s`;
+      });
+      if (kind === 'storm') add('flash');
+    } else if (kind === 'snow') {
+      add('cloud');
+      add('flake', 16, (s, i, n) => {
+        s.left = `${(i / n) * 100 + Math.random() * 5}%`;
+        s.animationDelay = `${(-Math.random() * 5).toFixed(2)}s`;
+        s.animationDuration = `${(3.5 + Math.random() * 2.5).toFixed(2)}s`;
+        s.transform = `scale(${(0.6 + Math.random() * 0.7).toFixed(2)})`;
+      });
+    } else if (kind === 'cloudy') {
+      add('cloud drift');
+    } else if (kind === 'fog') {
+      add('mist', 3, (s, i) => { s.bottom = `${10 + i * 26}px`; s.animationDelay = `${-i * 3}s`; });
+    } else if (kind === 'clear' && w.day) {
+      add('sun');
+    }
+  }
+  api.on('pet:decor', (d) => {
+    const seasonChanged = d.season !== decor.season;
+    decor = { season: null, weather: null, ...d };
+    if (seasonChanged) setCharacter(charPayload); else render();
+    renderWeather();
+  });
 
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const reportMotion = () => api.send('pet:reduced-motion', motion.matches);

@@ -33,6 +33,8 @@ const taskInput = z.object({
 
 const settingsPatch = z.object({
   character: z.string().regex(/^[a-z0-9_-]{1,32}$/),
+  buddyName: z.string().trim().max(24),
+  onboarded: z.boolean(),
   characterSize: z.number().min(0.75).max(1.5),
   animation: z.enum(['full', 'reduced', 'off']),
   personality: z.boolean(),
@@ -53,8 +55,22 @@ const settingsPatch = z.object({
   startWithWindows: z.boolean(),
   startHidden: z.boolean(),
   theme: z.enum(['system', 'light', 'dark']),
+  followCursor: z.boolean(),
+  perchOnWindows: z.boolean(),
+  weather: z.object({
+    enabled: z.boolean(),
+    unit: z.enum(['C', 'F']),
+    location: z.object({
+      name: z.string().trim().min(1).max(120),
+      lat: z.number().min(-90).max(90),
+      lon: z.number().min(-180).max(180),
+      country: z.string().max(80).optional(),
+    }).strict().nullable(),
+  }).partial().strict(),
   capture: z.lazy(() => captureSettings),
 }).partial().strict();
+
+const weatherQuery = z.string().trim().min(2, 'Type at least 2 letters').max(100);
 
 const credentials = z.object({
   email: z.string().trim().toLowerCase().email().max(200),
@@ -66,6 +82,8 @@ const credentials = z.object({
 });
 
 const id = z.string().uuid();
+const rewardId = z.string().regex(/^[a-z0-9-]{1,32}$/);
+const equipInput = z.object({ accessory: rewardId.nullable(), background: rewardId }).partial().strict();
 const snoozeMinutes = z.number().int().min(1).max(1440);
 
 // ---- Capture & bookmarks
@@ -163,5 +181,5 @@ function parse(schema, value) {
 
 module.exports = {
   isoDateTime, taskInput, settingsPatch, credentials, id, snoozeMinutes, recurrenceSchema, parse, safeUrl,
-  bookmarkInput, bookmarkPatch, bookmarkFilter, droppedText, accelerator, captureSettings, aiRequest, apiKey, noteInput,
+  bookmarkInput, bookmarkPatch, bookmarkFilter, droppedText, accelerator, captureSettings, aiRequest, apiKey, noteInput, equipInput, weatherQuery,
 };

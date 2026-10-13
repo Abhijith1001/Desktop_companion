@@ -12,6 +12,9 @@ import ChatPage from './pages/ChatPage';
 import BookmarksPage from './pages/BookmarksPage';
 import NotepadPage from './pages/NotepadPage';
 import CalculatorPage from './pages/CalculatorPage';
+import WelcomePage from './pages/WelcomePage';
+import ProgressPage from './pages/ProgressPage';
+import Confetti from './features/progress/Confetti';
 
 function useTheme(theme) {
   useEffect(() => {
@@ -47,10 +50,13 @@ export default function App() {
 
   if (!settings) return null;
 
+  if (path === '/welcome') return <><WelcomePage /><Toasts /></>;
+
   let page;
   const view = match('/tasks/view/:view', path);
   if (path === '/calendar') page = <CalendarPage />;
   else if (path === '/characters') page = <CharactersPage />;
+  else if (path === '/progress') page = <ProgressPage />;
   else if (path === '/settings') page = <SettingsPage />;
   else if (path === '/account') page = <AccountPage />;
   else if (path === '/chat') page = <ChatPage />;
@@ -71,6 +77,7 @@ export default function App() {
       <Sidebar path={path} />
       <main className="min-w-0 flex-1 overflow-y-auto">{page}</main>
       <Toasts />
+      <Confetti />
     </div>
   );
 }

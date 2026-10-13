@@ -2,15 +2,22 @@
 // state. Movement runs only while something is actually moving, and stops
 // entirely while the buddy is hidden.
 const path = require('path');
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, powerMonitor } = require('electron');
 const { AnimationController, STATES } = require('../pet/controller');
+const { createWindowProbe } = require('../pet/windowProbe');
 
 const BASE_W = 340;
 const BASE_H = 400;
 const TICK_MS = 33;
 const SPEED = { WALKING: 2, RUNNING: 7, glide: 6 };
+const LOOK_RANGE = 113;      // ≈3 cm at 96 DPI, in DIPs: the buddy watches the cursor inside this
+const CHASE_RANGE = 450;     // cursor this close (horizontally) may get chased
+const AFK_SECONDS = 5 * 60;  // nap after this long without keyboard/mouse input
+const NIGHT_IDLE_SECONDS = 60;
+const FOOT = 10;             // CSS px between the window bottom and the buddy's feet line
+const CALM = ['IDLE', 'SITTING', 'LOOKING_AROUND'];
 
-function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDropText }) {
+function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDropText, onDragged = () => {}, holdEntrance = () => false, onPetted = () => {}, onWake = () => {} }) {
   let win = null;
   let size = settings.get('characterSize');
   let reducedMotion = false;
@@ -19,6 +26,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   let drag = null;
   let target = null;        // { x, y, onArrive } for runs to the centre and back
   let home = null;          // where to return after a reminder
+  let tourHome = null;      // where to return after the onboarding tour
   let lastPos = '';
   let lastSentCss = '';
   let hitbox = null;        // the buddy's box inside the window, in CSS px
@@ -28,6 +36,17 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   let dir = -1;
   let clickTimer = null;
   let lastClickTime = 0;
+  let clickCount = 0;
+  let perch = null;         // { hwnd, top, left, right, since, until } while sitting on a window
+  let hopDown = false;      // leaving a perch on purpose: land softly
+  let afk = false;          // asleep because the user is away
+  let look = null;          // last cursor offset sent to the renderer
+  let lastCursor = { x: 0, y: 0, movedAt: 0 };
+  let lastChase = 0;
+  let lastYawn = 0;
+  let lastMood = null;      // resent when the renderer reloads
+  let lastDecor = null;
+  const probe = createWindowProbe({ log });
   const EMOTIONAL_STATES = [STATES.ANGRY, STATES.FALLING, STATES.IMPACT, STATES.DIZZY, STATES.RECOVERING];
   const physics = {
     vx: 0,              // Current horizontal velocity (px/tick)
@@ -62,14 +81,25 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     const { w, h } = dims();
     return screen.getDisplayNearestPoint({ x: Math.round(pos.x + w / 2), y: Math.round(pos.y + h / 2) });
   }
-  const groundY = (d = display()) => d.workArea.y + d.workArea.height - dims().h;
+  const groundY = (d = display()) => (perch
+    ? perch.top - dims().h + FOOT * size
+    : d.workArea.y + d.workArea.height - dims().h);
+
+  // Horizontal range for the window position: the screen, or the top edge of
+  // the window the buddy is sitting on.
+  function bounds(d = display()) {
+    const { w } = dims();
+    if (perch) {
+      const margin = 45 * size;
+      return { minX: perch.left + margin - w / 2, maxX: Math.max(perch.left + margin - w / 2, perch.right - margin - w / 2) };
+    }
+    const area = d?.workArea || { x: 0, y: 0, width: 1920, height: 1080 };
+    return { minX: area.x - 60, maxX: area.x + area.width - w + 60 };
+  }
 
   function clampToDisplay() {
     const d = display();
-    const { w } = dims();
-    const area = d?.workArea || { x: 0, y: 0, width: 1920, height: 1080 };
-    const minX = area.x - 60;
-    const maxX = area.x + area.width - w + 60;
+    const { minX, maxX } = bounds(d);
     if (!Number.isFinite(pos.x)) pos.x = maxX - 60;
     pos.x = Math.min(Math.max(pos.x, minX), maxX);
     if (!drag && !target) {
@@ -119,9 +149,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     if (controller.until) controller.tick();
     if (!needsLoop()) { clearInterval(loop); loop = null; return; }
     const d = display();
-    const { w } = dims();
-    const minX = d.workArea.x - 60;
-    const maxX = d.workArea.x + d.workArea.width - w + 60;
+    const { minX, maxX } = bounds(d);
 
     if (drag) {
       const c = screen.getCursorScreenPoint();
@@ -134,7 +162,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
 
       pos.x = c.x - drag.offX;
       pos.y = c.y - drag.offY;
-      if (Math.abs(c.x - drag.startX) + Math.abs(c.y - drag.startY) > 6) drag.moved = true;
+      if (Math.abs(c.x - drag.startX) + Math.abs(c.y - drag.startY) > 6) { drag.moved = true; perch = null; }
       physics.dragSamples.push({ x: c.x, y: c.y, t: now });
       if (physics.dragSamples.length > 5) physics.dragSamples.shift();
       physics.vx = 0;
@@ -182,7 +210,14 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
           const impactSpeed = physics.vy;
           const wasFalling = controller.state === STATES.FALLING;
 
-          if (wasFalling || impactSpeed > 6) {
+          if (hopDown) {
+            // Jumped down on purpose: a light landing, no dizzy spell.
+            hopDown = false;
+            physics.vy = 0;
+            physics.vx = 0;
+            send('pet:impact-effect');
+            controller.transition(STATES.IDLE);
+          } else if (wasFalling || impactSpeed > 6) {
             physics.vy = 0;
             physics.vx *= 0.3;
             controller.transition(STATES.IMPACT);
@@ -280,14 +315,40 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   function think() {
     if (!alive() || !win.isVisible()) return;
     controller.tick();
+    watchPerch();
     const h = new Date().getHours();
     const night = h >= 23 || h < 7;
+    const idleSec = powerMonitor.getSystemIdleTime();
     const isEmotional = EMOTIONAL_STATES.includes(controller.state);
-    if ((night || sleepingByUser) && controller.state !== STATES.SLEEPING && !controller.reminderActive && !drag) {
+
+    // Naps: when the user is away, and at night once things go quiet.
+    if (idleSec >= AFK_SECONDS) afk = true;
+    else if (afk && idleSec < 2) {
+      afk = false;
+      if (controller.state === STATES.SLEEPING && !sleepingByUser) {
+        controller.wake();
+        controller.transition(STATES.WAVING);
+        onWake('back');
+        ensureLoop();
+        return;
+      }
+    }
+    const sleepy = sleepingByUser || afk || (night && idleSec >= NIGHT_IDLE_SECONDS);
+
+    if (sleepy && controller.state !== STATES.SLEEPING && !controller.reminderActive && !drag && !target) {
       controller.sleep();
-    } else if (!night && !sleepingByUser && controller.state === STATES.SLEEPING) {
+    } else if (!sleepy && controller.state === STATES.SLEEPING) {
       controller.wake();
-    } else if (!controller.reminderActive && !drag && controller.state !== STATES.SLEEPING && !isEmotional) {
+      onWake('morning');
+    } else if (!controller.reminderActive && !drag && !target && !controller.until && controller.state !== STATES.SLEEPING && !isEmotional) {
+      // Late evening and night: yawn every now and then.
+      if ((h >= 21 || h < 7) && Date.now() - lastYawn > 45_000 && Math.random() < 0.06) {
+        lastYawn = Date.now();
+        send('pet:mannerism', 'yawn');
+      }
+      if (maybeChase() || maybePerch()) { ensureLoop(); return; }
+      // Stay put and watch while the cursor is close.
+      if (look && controller.state !== STATES.WALKING) { ensureLoop(); return; }
       ambientCountdown--;
       if (ambientCountdown <= 0) {
         if (controller.state === STATES.WALKING) {
@@ -311,6 +372,140 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     ensureLoop();
   }
   let sleepingByUser = false;
+
+  // ---------- chasing the cursor
+  // A moving cursor nearby (but outside the "watch" range) sometimes gets
+  // chased. The buddy stops short of it and then watches it.
+  function maybeChase() {
+    if (!settings.get('followCursor') || animationMode() !== 'full' || look) return false;
+    if (Date.now() - lastChase < 8000 || Date.now() - lastCursor.movedAt > 1500 || Math.random() > 0.35) return false;
+    const { w, h } = dims();
+    const cx = pos.x + w / 2;
+    const feet = pos.y + h - FOOT * size;
+    const dx = lastCursor.x - cx;
+    if (Math.abs(dx) > CHASE_RANGE || Math.abs(dx) < LOOK_RANGE || lastCursor.y > feet + 20 || feet - lastCursor.y > 260) return false;
+    const { minX, maxX } = bounds();
+    const stopShort = Math.sign(dx) * 70 * size;
+    const x = Math.min(maxX, Math.max(minX, lastCursor.x - stopShort - w / 2));
+    if (Math.abs(x - pos.x) < 20) return false;
+    lastChase = Date.now();
+    setDir(dx > 0 ? 1 : -1);
+    controller.transition(Math.abs(dx) > 250 ? STATES.RUNNING : STATES.WALKING);
+    target = { x, y: groundY(), onArrive: () => { controller.transition(STATES.IDLE); ambientCountdown = 4; } };
+    return true;
+  }
+
+  // ---------- sitting on top of other windows
+  function toDip(r) {
+    const phys = { x: r.x, y: r.y, width: r.w, height: r.h };
+    const d = process.platform === 'win32' ? screen.screenToDipRect(null, phys) : phys;
+    return { left: d.x, top: d.y, right: d.x + d.width, width: d.width, height: d.height };
+  }
+
+  function suitable(r) {
+    if (!r || r.pid === process.pid || r.maximized) return null;
+    const box = toDip(r);
+    const area = screen.getDisplayNearestPoint({ x: Math.round(box.left + box.width / 2), y: Math.round(box.top) }).workArea;
+    const tall = 130 * size;
+    if (box.width < 260 || box.height < 160) return null;
+    if (box.top < area.y + tall || box.top > area.y + area.height - tall) return null;
+    return box;
+  }
+
+  let perchBusy = false;
+  function maybePerch() {
+    if (perch || perchBusy || !settings.get('perchOnWindows') || animationMode() !== 'full') return false;
+    if (Math.random() > 1 / 75) return false; // roughly every minute or two
+    perchBusy = true;
+    probe.foreground().then((r) => {
+      perchBusy = false;
+      const box = suitable(r);
+      if (!box || !alive() || drag || target || controller.reminderActive || controller.state === STATES.SLEEPING) return;
+      const { w, h } = dims();
+      const margin = 45 * size;
+      const x = Math.min(Math.max(pos.x, box.left + margin - w / 2), box.right - margin - w / 2);
+      const y = box.top - h + FOOT * size;
+      setDir(x + w / 2 > pos.x + w / 2 ? 1 : -1);
+      controller.transition(STATES.RUNNING);
+      target = {
+        x, y,
+        onArrive: () => {
+          perch = { hwnd: r.hwnd, top: box.top, left: box.left, right: box.right, until: Date.now() + 40_000 + Math.random() * 80_000 };
+          controller.transition(STATES.SITTING);
+          ambientCountdown = 6;
+        },
+      };
+      ensureLoop();
+    }).catch(() => { perchBusy = false; });
+    return false;
+  }
+
+  // While perched: follow the window when it moves, fall when it goes away,
+  // and hop down after a while.
+  let perchCheck = 0;
+  function watchPerch() {
+    if (!perch || perchBusy || drag) return;
+    if (Date.now() > perch.until && !target && !controller.reminderActive) { leavePerch(true); return; }
+    if (++perchCheck % 2) return;
+    perchBusy = true;
+    const was = perch;
+    probe.rect(was.hwnd).then((r) => {
+      perchBusy = false;
+      if (perch !== was) return;
+      const box = r && !r.gone && !r.maximized ? toDip(r) : null;
+      if (!box) { leavePerch(false); return; }
+      const dx = box.left - was.left;
+      perch = { ...was, top: box.top, left: box.left, right: box.right };
+      if (Math.abs(dx) > 1) pos.x += dx;
+      clampToDisplay();
+      ensureLoop();
+    }).catch(() => { perchBusy = false; });
+  }
+
+  function leavePerch(onPurpose) {
+    if (!perch) return;
+    perch = null;
+    if (onPurpose) {
+      hopDown = true;
+      physics.vy = -6;
+      physics.vx = dir * 1.5;
+      controller.transition(STATES.IDLE);
+    } else {
+      hopDown = false;
+      controller.transition(STATES.FALLING);
+      if (Math.random() < 0.7) send('pet:say', { text: 'Whoa! Where did it go?!', ms: 1400 });
+    }
+    ensureLoop();
+  }
+
+  // ---------- watching the cursor
+  // Cursor within ≈3 cm of the buddy: turn towards it and point the head and
+  // eyes at it. Offsets are sent in CSS px relative to the head.
+  function trackCursor(c) {
+    if (c.x !== lastCursor.x || c.y !== lastCursor.y) lastCursor = { x: c.x, y: c.y, movedAt: Date.now() };
+    if (!hitbox || !settings.get('followCursor')) { setLook(null); return; }
+    const left = pos.x + hitbox.x * size;
+    const top = pos.y + hitbox.y * size;
+    const right = left + hitbox.w * size;
+    const bottom = top + hitbox.h * size;
+    const gap = Math.hypot(Math.max(left - c.x, 0, c.x - right), Math.max(top - c.y, 0, c.y - bottom));
+    const busy = drag || controller.reminderActive || controller.state === STATES.SLEEPING || EMOTIONAL_STATES.includes(controller.state);
+    if (gap > LOOK_RANGE || busy) { setLook(null); return; }
+    const headX = (left + right) / 2 + dir * hitbox.w * size * 0.22;
+    const headY = top + hitbox.h * size * 0.3;
+    const dx = (c.x - headX) / size;
+    const dy = (c.y - headY) / size;
+    // Turn round to face a cursor behind the buddy (with a little hysteresis).
+    if (CALM.includes(controller.state) && !target && Math.sign(dx) !== dir && Math.abs(dx) > 30) setDir(Math.sign(dx));
+    setLook({ dx: Math.round(dx), dy: Math.round(dy), inside: gap === 0 });
+  }
+
+  function setLook(v) {
+    if (!v && !look) return;
+    if (v && look && Math.abs(v.dx - look.dx) < 3 && Math.abs(v.dy - look.dy) < 3 && v.inside === look.inside) return;
+    look = v;
+    send('pet:look', v);
+  }
 
   function sendOptions() {
     const s = settings.getAll();
@@ -365,6 +560,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     // Click-through windows get no drag events, so when the cursor reaches the
     // buddy (for example while dragging text from a browser) make it catchable.
     // The renderer turns click-through back on when the cursor leaves.
+    // The same poll drives cursor watching.
     hover = setInterval(() => {
       if (!alive() || !win.isVisible() || !hitbox) return;
       const c = screen.getCursorScreenPoint();
@@ -373,7 +569,8 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
       const inside = x >= hitbox.x && x <= hitbox.x + hitbox.w && y >= hitbox.y && y <= hitbox.y + hitbox.h;
       if (inside && !overBuddy) win.setIgnoreMouseEvents(false);
       overBuddy = inside;
-    }, 100);
+      trackCursor(c);
+    }, 60);
     screen.on('display-removed', clampToDisplay);
     screen.on('display-added', clampToDisplay);
     screen.on('display-metrics-changed', clampToDisplay);
@@ -384,11 +581,14 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
 
   ipcMain.on('pet:ready', fromPet(() => {
     win.webContents.setZoomFactor(size);
-    send('pet:character', settings.get('character'));
-    if (!settings.get('buddyHidden')) win.showInactive();
+    sendCharacter();
+    // During onboarding the buddy stays off screen until walkIn() brings it on.
+    if (!settings.get('buddyHidden') && !holdEntrance()) win.showInactive();
     sendOptions();
     lastSentCss = controller.css;
     send('pet:state', { css: controller.css, dir });
+    if (lastMood) send('pet:mood', lastMood);
+    if (lastDecor) send('pet:decor', lastDecor);
     ensureLoop();
     onReady();
   }));
@@ -412,17 +612,33 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   ];
   const FALLING_SPEECHES = ['Whoa!', 'Ahhh!', 'Oh no!', 'Whooooa!'];
 
-  function triggerAngryReaction() {
+  const LOVED_SPEECHES = ['Hehe!', '♥', 'That tickles!', 'Aww, thanks!', '*happy wiggle*'];
+  const pick = (list) => list[Math.floor(Math.random() * list.length)];
+
+  function triggerAngryReaction(clicks = 3) {
     if (!alive() || !win.isVisible()) return;
     if (controller.reminderActive || drag) return;
     controller.transition(STATES.ANGRY);
     send('pet:angry-sound');
-    if (Math.random() < 0.75) {
-      const speech = ANGRY_SPEECHES[Math.floor(Math.random() * ANGRY_SPEECHES.length)];
-      send('pet:say', { text: speech, ms: 1400 });
-    }
+    if (clicks >= 6) send('pet:say', { text: 'OK, that’s ENOUGH clicking! 😤', ms: 1800 });
+    else if (Math.random() < 0.75) send('pet:say', { text: pick(ANGRY_SPEECHES), ms: 1400 });
     ensureLoop();
   }
+
+  // Petting: a single click or stroking the buddy with the mouse.
+  let lastLoved = 0;
+  function loved({ quiet = false } = {}) {
+    if (!alive() || !win.isVisible() || controller.reminderActive || drag) return;
+    if (controller.state === STATES.SLEEPING) { send('pet:hearts'); return; } // purrs in its sleep
+    if (Date.now() - lastLoved < 1500 && controller.state === STATES.LOVED) return;
+    lastLoved = Date.now();
+    controller.transition(STATES.LOVED);
+    send('pet:purr');
+    if (!quiet && Math.random() < 0.6) send('pet:say', { text: pick(LOVED_SPEECHES), ms: 1400 });
+    onPetted();
+    ensureLoop();
+  }
+  ipcMain.on('pet:petted', fromPet(() => loved({ quiet: Math.random() < 0.5 })));
 
   ipcMain.on('pet:drag-start', fromPet(() => {
     if (clickTimer) {
@@ -432,6 +648,8 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     const c = screen.getCursorScreenPoint();
     drag = { offX: c.x - pos.x, offY: c.y - pos.y, startX: c.x, startY: c.y, lastX: c.x, lastY: c.y, moved: false };
     target = null;
+    hopDown = false;
+    setLook(null);
     physics.dragSamples = [{ x: c.x, y: c.y, t: Date.now() }];
     physics.vx = 0;
     physics.vy = 0;
@@ -446,38 +664,31 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     drag = null;
 
     if (wasClick) {
+      // Not really dragged: back to whatever it was doing (or sleeping).
+      controller.drop();
+      // Count quick clicks, then react once the burst ends:
+      //   1 → a happy little reaction, 2 → open the task manager, 3+ → annoyed.
+      // drag-start (each mousedown) cancels the pending timer, so the count
+      // comes from the timing alone.
       const now = Date.now();
-      const timeSinceLastClick = now - lastClickTime;
+      clickCount = now - lastClickTime <= 380 ? clickCount + 1 : 1;
       lastClickTime = now;
-
-      // drag-start (the second mousedown) already cancelled clickTimer, so
-      // detect the double-click from the timing alone.
-      if (timeSinceLastClick <= 350) {
-        // Double-click detected! Open manager, cancel angry reaction
-        clearTimeout(clickTimer);
-        clickTimer = null;
-        lastClickTime = 0;
-        if (controller.state === STATES.SLEEPING) {
-          sleepingByUser = false;
-          controller.wake();
-        }
-        if (!controller.reminderActive) {
-          onClick();
-        }
-        return;
-      }
-
-      // First click: queue single click angry reaction with a cancellable timer (300ms)
       if (clickTimer) clearTimeout(clickTimer);
       clickTimer = setTimeout(() => {
         clickTimer = null;
+        const n = clickCount;
+        clickCount = 0;
+        lastClickTime = 0;
         if (controller.state === STATES.SLEEPING) {
           sleepingByUser = false;
+          afk = false;
           controller.wake();
-          return;
+          if (n === 1) { send('pet:say', { text: '*yawn* …I’m up, I’m up!', ms: 1800 }); return; }
         }
-        triggerAngryReaction();
-      }, 300);
+        if (n === 1) loved();
+        else if (n === 2) { if (!controller.reminderActive) onClick(); }
+        else triggerAngryReaction(n);
+      }, 380);
       return;
     }
 
@@ -508,7 +719,9 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
 
     if (controller.reminderActive) home = { x: pos.x, displayId: display().id };
     else settings.update({ position: { x: Math.round(pos.x), displayId: display().id } });
+    if (tourHome) tourHome = { x: pos.x };
     ensureLoop();
+    onDragged();
   }));
   ipcMain.handle('pet:hint', (e) => (alive() && e.sender === win.webContents ? hint() : null));
 
@@ -527,12 +740,15 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     win.hide();
     settings.update({ buddyHidden: true });
     sendOptions();
+    perch = null;
     if (loop) { clearInterval(loop); loop = null; }
   }
 
   function startReminder({ center }) {
     if (!alive()) return;
     win.moveTop();
+    perch = null;
+    setLook(null);
     controller.transition(STATES.REMINDER);
     home = { x: pos.x, displayId: display().id };
     if (!center) return;
@@ -558,6 +774,8 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     }
   }
 
+  const sendCharacter = () => send('pet:character', { id: settings.get('character'), accessory: settings.get('accessory') });
+
   function applySettings(patch) {
     if ('characterSize' in patch) {
       size = settings.get('characterSize');
@@ -566,12 +784,77 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
       win.webContents.setZoomFactor(size);
       clampToDisplay();
     }
-    if ('character' in patch) send('pet:character', settings.get('character'));
+    if ('character' in patch || 'accessory' in patch) sendCharacter();
     if (['animation', 'sound', 'volume', 'speech', 'voice'].some((k) => k in patch)) sendOptions();
+  }
+
+  // ---------- onboarding choreography
+  // Walk in from the right edge of the screen to the usual spot, then wave.
+  function walkIn({ onArrive } = {}) {
+    if (!alive()) return;
+    const d = display().workArea;
+    const { w } = dims();
+    const homeX = pos.x;
+    perch = null;
+    pos.x = d.x + d.width + 10;
+    pos.y = groundY();
+    lastPos = '';
+    apply();
+    win.showInactive();
+    settings.update({ buddyHidden: false });
+    sendOptions();
+    if (controller.state === STATES.SLEEPING) controller.wake();
+    setDir(-1);
+    controller.transition(STATES.WALKING);
+    ambientCountdown = 99;
+    target = {
+      x: Math.min(homeX, d.x + d.width - w - 20),
+      y: groundY(),
+      onArrive: () => { ambientCountdown = 4; controller.transition(STATES.WAVING); onArrive?.(); },
+    };
+    ensureLoop();
+  }
+
+  // Stroll to the bottom-right corner (next to the tray) or back to where it was.
+  function goTo(where, { onArrive } = {}) {
+    if (!alive() || !win.isVisible() || drag) return;
+    perch = null;
+    let x;
+    if (where === 'tray') {
+      if (!tourHome) tourHome = { x: pos.x };
+      const d = screen.getPrimaryDisplay().workArea;
+      x = d.x + d.width - dims().w + 50;
+    } else {
+      if (!tourHome) { onArrive?.(); return; }
+      x = tourHome.x;
+      tourHome = null;
+    }
+    if (Math.abs(x - pos.x) < 4) { setDir(where === 'tray' ? 1 : -1); onArrive?.(); return; }
+    setDir(x > pos.x ? 1 : -1);
+    controller.transition(STATES.WALKING);
+    ambientCountdown = 99;
+    target = {
+      x, y: groundY(),
+      onArrive: () => {
+        ambientCountdown = 4;
+        if (where === 'tray') setDir(1);
+        controller.transition(STATES.IDLE);
+        if (where !== 'tray') settings.update({ position: { x: Math.round(pos.x), displayId: display().id } });
+        onArrive?.();
+      },
+    };
+    ensureLoop();
+  }
+
+  function wave() {
+    if (!alive() || controller.reminderActive) return;
+    if (controller.state === STATES.SLEEPING) controller.wake();
+    controller.transition(STATES.WAVING);
   }
 
   function setSleeping(v) {
     sleepingByUser = v;
+    if (!v) afk = false;
     if (v) controller.sleep(); else controller.wake();
   }
 
@@ -580,6 +863,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     clearInterval(loop);
     clearInterval(brain);
     clearInterval(hover);
+    probe.dispose();
     screen.removeListener('display-removed', clampToDisplay);
     screen.removeListener('display-added', clampToDisplay);
     screen.removeListener('display-metrics-changed', clampToDisplay);
@@ -588,15 +872,34 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   create();
 
   return {
-    show, hide, destroy, startReminder, endReminder, applySettings, setSleeping,
+    show, hide, destroy, startReminder, endReminder, applySettings, setSleeping, walkIn, goTo, wave,
     isVisible: () => alive() && win.isVisible(),
     isSleeping: () => controller.state === STATES.SLEEPING,
     send,
+    // Hop for joy and say something, unless a reminder is on screen.
+    celebrate(text) {
+      if (!alive() || !win.isVisible() || controller.reminderActive) return;
+      if (controller.state === STATES.SLEEPING) controller.wake();
+      controller.transition(STATES.CELEBRATING);
+      send('pet:say', { text, ms: 4000 });
+    },
     speak(text, ms) {
       if (!alive() || !win.isVisible()) return;
       if (!controller.reminderActive) controller.transition(STATES.SPEAKING);
       send('pet:say', { text, ms });
     },
+    // Munch a treat (the caller has already spent it).
+    eat(text) {
+      if (!alive() || !win.isVisible() || controller.reminderActive) return false;
+      if (controller.state === STATES.SLEEPING) { sleepingByUser = false; afk = false; controller.wake(); }
+      controller.transition(STATES.EATING);
+      send('pet:eat');
+      if (text) setTimeout(() => send('pet:say', { text, ms: 2500 }), 1600);
+      return true;
+    },
+    // Mood ({ level, hungry }) and decorations ({ season, weather }) for the renderer.
+    setMood: (m) => { lastMood = m; send('pet:mood', m); },
+    setDecor: (d) => { lastDecor = d; send('pet:decor', d); },
     get window() { return win; },
   };
 }

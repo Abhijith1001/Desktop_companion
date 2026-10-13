@@ -27,6 +27,11 @@ contextBridge.exposeInMainWorld('buddy', {
     update: invoke('settings:update'),
     onChange: on('settings:changed'),
   },
+  progress: {
+    state: invoke('progress:state'),
+    equip: invoke('progress:equip'),
+    onUnlocked: on('progress:unlocked'),
+  },
   reminders: {
     pause: invoke('reminders:pause'),
     status: invoke('reminders:status'),
@@ -35,6 +40,15 @@ contextBridge.exposeInMainWorld('buddy', {
     show: invoke('buddy:show'),
     hide: invoke('buddy:hide'),
     preview: invoke('buddy:preview'),
+    stats: invoke('buddy:stats'),
+    feed: invoke('buddy:feed'),
+    onStats: on('buddy:stats'),
+  },
+  weather: {
+    search: invoke('weather:search'),
+    locate: invoke('weather:locate'),
+    current: invoke('weather:current'),
+    onUpdate: on('weather:update'),
   },
   sync: {
     status: invoke('sync:status'),
@@ -78,6 +92,11 @@ contextBridge.exposeInMainWorld('buddy', {
     status: invoke('ai:status'),
     setKey: invoke('ai:set-key'),
     ask: invoke('ai:ask'),
+  },
+  onboarding: {
+    cue: invoke('onboarding:cue'),
+    finish: invoke('onboarding:finish'),
+    onEvent: on('onboarding:event'),
   },
   app: {
     info: invoke('app:info'),

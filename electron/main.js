@@ -9,6 +9,7 @@ const log = require('./logger');
 const { open: openDb, schemaVersion } = require('./database/db');
 const { createSettings } = require('./services/settings');
 const { createTaskService } = require('./services/tasks');
+const { createProgress } = require('./services/progress');
 const { createBookmarkService } = require('./services/bookmarks');
 const { createNoteService } = require('./services/notes');
 const { createAi } = require('./services/ai');
@@ -23,6 +24,8 @@ const { createTray } = require('./tray/tray');
 const { createHandlers } = require('./ipc/handlers');
 const { importLegacy } = require('./legacy');
 const { makeIcon } = require('./icon');
+const { createOnboarding } = require('./onboarding');
+const { createBuddyLife } = require('./buddyLife');
 const dialogue = require('./dialogue');
 
 const APP_ID = 'com.devwerks.desktopbuddy';
@@ -46,7 +49,7 @@ function start() {
   process.on('unhandledRejection', (err) => log.error('unhandled rejection', { error: String(err && err.message || err) }));
 
   let db; let settings; let tasks; let engine; let sync; let presenter; let pet; let manager; let tray;
-  let bookmarks; let capture; let ai; let notes;
+  let bookmarks; let capture; let ai; let notes; let onboarding; let progress; let life;
 
   const characters = () => {
     const ctx = { window: {} };
@@ -234,6 +237,26 @@ function start() {
     presenter.present({ kind: 'break', tip: dialogue.BREAK_TIPS[Math.floor(Math.random() * dialogue.BREAK_TIPS.length)] });
   }
 
+  // Badges and level-ups: checked after task changes (deferred so we never
+  // write inside the task transaction), then celebrated in both windows.
+  let progressQueued = false;
+  function checkProgress() {
+    if (progressQueued || !progress) return;
+    progressQueued = true;
+    setImmediate(() => {
+      progressQueued = false;
+      let events;
+      try { events = progress.check(); } catch (err) { log.warn('progress check failed', { error: err.message }); return; }
+      if (!events.length) return;
+      manager.send('progress:unlocked', events);
+      const e = events[events.length - 1];
+      const text = e.kind === 'level'
+        ? `Level ${e.level}! I'm a ${e.stage} now ✨`
+        : `${e.emoji} Badge unlocked: ${e.name}!`;
+      setTimeout(() => pet && pet.celebrate(text), 2600);
+    });
+  }
+
   app.on('second-instance', () => openTasks('/tasks'));
   app.on('before-quit', () => { app.isQuitting = true; });
   app.on('window-all-closed', () => { /* keep running in the tray */ });
@@ -254,10 +277,18 @@ function start() {
 
     settings = createSettings(db);
     if (process.env.BUDDY_MUTE) settings.update({ sound: false, speech: false }); // automated tests
+    if (process.env.BUDDY_SKIP_ONBOARDING) settings.update({ onboarded: true }); // automated tests
     tasks = createTaskService({
       db,
       shouldSync: () => settings.get('sync').enabled && !!getToken(),
-      onChange: () => manager && manager.send('tasks:changed'),
+      onChange: () => { if (manager) manager.send('tasks:changed'); checkProgress(); if (life) life.onTasksChanged(); },
+    });
+    progress = createProgress({ db, settings });
+    life = createBuddyLife({
+      db, tasks, settings, log, openTasks,
+      getPet: () => pet, getManager: () => manager,
+      isBusy: () => !!(presenter && presenter.current),
+      idleSeconds: () => powerMonitor.getSystemIdleTime(),
     });
     bookmarks = createBookmarkService({ db, onChange: () => manager && manager.send('bookmarks:changed') });
     notes = createNoteService({ db });
@@ -279,15 +310,27 @@ function start() {
       onRemoteChange: () => { engine.wake(); manager.send('tasks:changed'); },
     });
 
+    onboarding = createOnboarding({
+      settings, tasks, log, getPet: () => pet, getManager: () => manager,
+      onTasksChanged: () => { engine.wake(); manager.send('tasks:changed'); },
+    });
+    onboarding.prepare({ autostart: process.argv.includes('--autostart') });
+
     let welcomed = false;
     pet = createPetWindow({
-      settings, log, hint,
+      settings, log,
+      hint: () => ({ ...hint(), stats: life.hintStats() }),
+      onPetted: () => life.onPetted(),
+      onWake: (kind) => life.onWake(kind),
       onClick: () => openTasks('/tasks'),
-      onMenu: (win) => tray.popup(win),
+      onMenu: (win) => { onboarding.event('menu'); tray.popup(win); },
+      onDragged: () => onboarding.event('dragged'),
+      holdEntrance: onboarding.holdEntrance,
       onDropText: saveDroppedText,
       onReady: () => {
         if (welcomed) return;
         welcomed = true;
+        if (onboarding.onPetReady()) return; // first run: walk-in greeting instead
         setTimeout(() => {
           const s = settings.getAll();
           if (pet.isVisible() && !pet.isSleeping() && !presenter.current) {
@@ -298,12 +341,12 @@ function start() {
     });
     if (settings.get('startHidden') && process.argv.includes('--autostart')) settings.update({ buddyHidden: true });
 
-    tray = createTray({ icon, settings, tasks, characters, getPet: () => pet, openTasks, pause, exit });
+    tray = createTray({ icon, settings, tasks, characters, getPet: () => pet, openTasks, pause, exit, care: life });
 
     // ---- IPC from the task manager window
     const handlers = createHandlers({
       tasks, settings, engine, sync, pet: () => pet, exportData, confirmDeleteAccount, previewBuddy,
-      bookmarks, ai, confirmClearBookmarks, notes,
+      bookmarks, ai, confirmClearBookmarks, notes, onboarding, progress, weather: life.weather, buddyCare: life,
       copyText: (text) => clipboard.writeText(text),
       capture: {
         selection: (delay) => runCapture('selection', delay),
@@ -362,6 +405,7 @@ function start() {
     });
 
     engine.start();
+    life.start();
     sync.start();
     setInterval(checkBreak, 60_000);
 
@@ -374,13 +418,16 @@ function start() {
       });
     }
 
-    globalShortcut.register('Control+Alt+B', () => (pet.isVisible() ? pet.hide() : pet.show()));
+    globalShortcut.register('Control+Alt+B', () => {
+      if (pet.isVisible()) pet.hide(); else pet.show();
+      onboarding.event('toggled');
+    });
     registerShortcuts();
   });
 
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
-    try { engine && engine.stop(); sync && sync.stop(); pet && pet.destroy(); } catch { /* shutting down */ }
+    try { engine && engine.stop(); sync && sync.stop(); life && life.stop(); pet && pet.destroy(); } catch { /* shutting down */ }
     try { db && db.close(); } catch { /* already closed */ }
     log.info('stopped');
   });

@@ -4,7 +4,7 @@ function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-function createTray({ icon, settings, tasks, characters, getPet, openTasks, pause, exit }) {
+function createTray({ icon, settings, tasks, characters, getPet, openTasks, pause, exit, care }) {
   const tray = new Tray(icon);
   tray.setToolTip('Desktop Buddy');
   tray.on('click', () => openTasks('/tasks'));
@@ -23,9 +23,19 @@ function createTray({ icon, settings, tasks, characters, getPet, openTasks, paus
     const visible = pet && pet.isVisible();
     const paused = s.pausedUntil && Date.parse(s.pausedUntil) > Date.now();
     const today = todaysTasks();
+    const stats = care ? care.stats() : null;
 
     return [
       { label: visible ? 'Hide buddy' : 'Show buddy', accelerator: 'Ctrl+Alt+B', click: () => (visible ? pet.hide() : pet.show()) },
+      ...(stats ? [
+        {
+          label: stats.treats ? `Feed a treat 🍪 (${stats.treats} left)` : 'Feed a treat 🍪 (finish a task to earn one)',
+          enabled: stats.treats > 0 && !!visible,
+          click: () => care.feed(),
+        },
+        { label: care.hintStats(), enabled: false },
+        { type: 'separator' },
+      ] : []),
       { label: 'Open task manager', click: () => openTasks('/tasks') },
       { label: 'Add a task…', click: () => openTasks('/tasks/new') },
       { label: 'Chat & bookmarks', click: () => openTasks('/chat') },
@@ -65,6 +75,7 @@ function createTray({ icon, settings, tasks, characters, getPet, openTasks, paus
         label: pet && pet.isSleeping() ? 'Wake buddy up' : 'Put buddy to sleep',
         click: () => pet && pet.setSleeping(!pet.isSleeping()),
       },
+      ...(care && !s.weather?.location && s.weather?.enabled ? [{ label: 'Set weather location…', click: () => openTasks('/settings') }] : []),
       { label: 'Settings…', click: () => openTasks('/settings') },
       { type: 'separator' },
       { label: 'Exit Desktop Buddy', click: exit },

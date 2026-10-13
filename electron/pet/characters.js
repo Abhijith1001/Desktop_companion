@@ -257,12 +257,53 @@ window.CHARACTERS = {
   },
 };
 
-// Full SVG for a character, wrapped in the groups buddy.css animates.
-window.buddyMarkup = function buddyMarkup(id) {
+// Unlockable accessories (see electron/services/progress.js). Drawn with the
+// point where they rest on the head at 0,0 and placed via HAT_ANCHORS.
+window.ACCESSORIES = {
+  'party-hat': '<path d="M-12 0 L0 -26 L12 0 Z" fill="#ff5fa2"/><path d="M-7 -10 L7 -10 M-4 -18 L4 -18" stroke="#ffd34d" stroke-width="2.5"/><circle cx="0" cy="-27" r="4" fill="#ffd34d"/>',
+  bow: '<g transform="translate(10 0)"><path d="M0 -6 L-12 -13 L-12 1 Z M0 -6 L12 -13 L12 1 Z" fill="#e0443e"/><circle cx="0" cy="-6" r="3.5" fill="#b8322d"/></g>',
+  flower: '<g transform="translate(9 -4)" fill="#ff8fc7"><circle cx="0" cy="-6" r="4"/><circle cx="6" cy="-1" r="4"/><circle cx="-6" cy="-1" r="4"/><circle cx="4" cy="5" r="4"/><circle cx="-4" cy="5" r="4"/><circle cx="0" cy="0" r="3.5" fill="#ffd34d"/></g>',
+  star: '<path d="M0 -32 L3.5 -23 L13 -23 L5.5 -17 L8 -8 L0 -13 L-8 -8 L-5.5 -17 L-13 -23 L-3.5 -23 Z" fill="#ffd34d" stroke="#d9a400" stroke-width="1.2"/>',
+  wizard: '<path d="M-12 -2 Q-2 -20 4 -40 Q6 -20 12 -2 Z" fill="#5b4fd0"/><ellipse cx="0" cy="-1" rx="18" ry="4" fill="#4b3fa8"/><circle cx="-2" cy="-14" r="1.8" fill="#ffd34d"/><circle cx="4" cy="-25" r="1.4" fill="#ffd34d"/>',
+  crown: '<path d="M-14 0 L-14 -14 L-7 -6 L0 -18 L7 -6 L14 -14 L14 0 Z" fill="#ffd34d" stroke="#c99a00" stroke-width="1.2"/><circle cx="0" cy="-5" r="2.5" fill="#e0443e"/>',
+  halo: '<ellipse cx="0" cy="-14" rx="15" ry="4" fill="none" stroke="#ffe066" stroke-width="3.5"/>',
+  // Seasonal (December), not an unlock: pet.js puts it on when nothing else is worn.
+  santa: '<path d="M-16 -2 Q-8 -30 10 -26 Q20 -22 24 -8 L14 -4 Z" fill="#d62828"/><circle cx="24" cy="-7" r="5" fill="#fff"/><rect x="-19" y="-6" width="38" height="9" rx="4.5" fill="#fff"/>',
+};
+// Top of each character's head: [x, y, scale].
+const HAT_ANCHORS = { dog: [118, 22, 0.9], tom: [70, 28, 0.8], cat: [119, 17, 1], hero: [80, 11, 0.8], ranger: [80, 11, 0.8] };
+// Where a treat goes when the buddy eats: [x, y].
+const MOUTH_ANCHORS = { dog: [150, 64], tom: [86, 64], cat: [126, 70], hero: [92, 40], ranger: [92, 40] };
+
+// Full SVG for a character, wrapped in the groups buddy.css animates. The
+// accessory goes inside the head group (always last) so it bobs with the head.
+window.buddyMarkup = function buddyMarkup(id, accessory) {
   const c = window.CHARACTERS[id] || window.CHARACTERS.dog;
+  let svg = c.svg;
+  const art = accessory && window.ACCESSORIES[accessory];
+  if (art) {
+    const [x, y, s] = HAT_ANCHORS[id] || [80, 12, 0.8];
+    const at = svg.lastIndexOf('</g>');
+    svg = `${svg.slice(0, at)}<g class="accessory" transform="translate(${x} ${y}) scale(${s})">${art}</g>${svg.slice(at)}`;
+  }
+  const [mx, my] = MOUTH_ANCHORS[id] || [92, 40];
   return `<svg viewBox="0 0 160 130" aria-hidden="true">
     <ellipse cx="78" cy="122" rx="52" ry="5" fill="#000" opacity=".15"/>
-    <g class="jump"><g class="body-g">${c.svg}</g></g>
+    <g class="deco-pumpkin" transform="translate(14 101)">
+      <ellipse cx="0" cy="8" rx="13" ry="10" fill="#f28c28"/><ellipse cx="0" cy="8" rx="5" ry="10" fill="#e07a1a"/>
+      <path d="M0 -1 Q1 -6 4 -7" stroke="#4a7a2a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M-7 5 L-4 2 L-1 5 Z M1 5 L4 2 L7 5 Z M-6 11 Q0 15 6 11 L3 12 L0 10 L-3 12 Z" fill="#3a1f0a"/>
+    </g>
+    <g class="jump"><g class="body-g">${svg}</g></g>
+    <g class="fx-treat" transform="translate(${mx} ${my})">
+      <g class="treat"><circle r="7" fill="#d9a066"/><circle cx="-2.5" cy="-2" r="1.3" fill="#5a3418"/><circle cx="2.5" cy="1" r="1.3" fill="#5a3418"/><circle cx="-1" cy="3" r="1.1" fill="#5a3418"/></g>
+      <g class="crumbs" fill="#d9a066"><circle cx="-4" cy="6" r="1.5"/><circle cx="3" cy="8" r="1.2"/><circle cx="6" cy="4" r="1"/></g>
+    </g>
+    <g class="fx-hearts" fill="#ff5f8f">
+      <path class="h1" d="M100 30 C100 26 94 26 94 30 C94 34 100 37 100 39 C100 37 106 34 106 30 C106 26 100 26 100 30 Z"/>
+      <path class="h2" d="M120 20 C120 17 115 17 115 20 C115 23 120 25 120 27 C120 25 125 23 125 20 C125 17 120 17 120 20 Z"/>
+      <path class="h3" d="M84 22 C84 19 80 19 80 22 C80 24.5 84 26.5 84 28 C84 26.5 88 24.5 88 22 C88 19 84 19 84 22 Z"/>
+    </g>
     <g class="zzz" font-family="Segoe UI, sans-serif" font-weight="700" fill="#6b7fd7">
       <text x="140" y="20" font-size="14">z</text><text x="146" y="12" font-size="11">z</text><text x="150" y="6" font-size="9">z</text>
     </g>

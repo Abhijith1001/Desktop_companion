@@ -44,7 +44,7 @@ export const useToasts = create((set) => ({
   push(text, kind = 'info') {
     const id = ++toastId;
     set((s) => ({ toasts: [...s.toasts, { id, text, kind }] }));
-    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), kind === 'error' ? 6000 : 3000);
+    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), kind === 'error' || kind === 'success' ? 6000 : 3000);
   },
   dismiss(id) { set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })); },
 }));
@@ -95,15 +95,35 @@ export const useChat = create((set, get) => ({
   },
 }));
 
+// XP, streak, badges and rewards (derived in the main process). `burst`
+// increments whenever something unlocks so the confetti overlay can fire.
+export const useProgress = create((set) => ({
+  state: null,
+  burst: 0,
+  async load() { try { set({ state: await api.progress.state() }); } catch { /* not critical */ } },
+  async equip(patch) {
+    try { set({ state: await api.progress.equip(patch) }); } catch (err) { useToasts.getState().push(err.message, 'error'); }
+  },
+  celebrate(events) {
+    for (const e of events) {
+      const reward = e.rewards?.length ? ` · Unlocked: ${e.rewards.join(', ')}` : '';
+      useToasts.getState().push(e.kind === 'level' ? `⭐ Level ${e.level} — ${e.stage}!${reward}` : `${e.emoji} Badge unlocked: ${e.name}${reward}`, 'success');
+    }
+    set((s) => ({ burst: s.burst + 1 }));
+  },
+}));
+
 // Wire main-process events to the stores once.
 export function subscribeToMain() {
   const offs = [
-    api.tasks.onChange(() => useTasks.getState().load()),
+    api.tasks.onChange(() => { useTasks.getState().load(); useProgress.getState().load(); }),
+    api.progress.onUnlocked((events) => { useProgress.getState().celebrate(events); useProgress.getState().load(); }),
     api.settings.onChange((s) => useSettings.getState().receive(s)),
     api.sync.onStatus((s) => useSync.getState().receive(s)),
     api.bookmarks.onChange(() => useBookmarks.getState().refresh()),
     api.capture.onNew(() => useChat.getState().pullPending()),
   ];
   useBookmarks.getState().refresh();
+  useProgress.getState().load();
   return () => offs.forEach((off) => off());
 }

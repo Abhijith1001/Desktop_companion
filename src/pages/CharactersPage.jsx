@@ -43,7 +43,7 @@ export default function CharactersPage() {
             <button key={id} type="button" onClick={() => update({ character: id })} aria-pressed={active}
               className={`card flex flex-col items-center gap-2 p-4 text-center transition-shadow hover:shadow-md ${active ? 'ring-2 ring-brand-500' : ''}`}>
               <div className="grid h-40 w-full place-items-center rounded-xl bg-gradient-to-b from-sky-50 to-brand-50 dark:from-stone-800 dark:to-stone-900">
-                <BuddyPreview id={id} state={state} />
+                <BuddyPreview id={id} state={state} accessory={settings.accessory} />
               </div>
               <span className="text-base font-bold">{c.name} {active && <span className="chip ml-1 bg-brand-500 text-stone-950">Selected</span>}</span>
               <span className="text-xs text-stone-500">{PERSONALITIES[id] || 'A custom character.'}</span>

@@ -132,6 +132,14 @@
 .buddy.alert .leg { animation: b-swing .2s ease-in-out infinite alternate; }
 .buddy.happy .arm.b, .buddy.alert .arm.b { animation: b-wave .25s ease-in-out infinite alternate; }
 
+/* wave hello (onboarding): one hop, wagging tail, waving paw/arm */
+.buddy.wave .jump { transform-origin: 80px 120px; animation: b-hop .6s ease-in-out 2; }
+.buddy.wave #tongue { display: inline; }
+.buddy.wave #tail { animation-duration: .15s; }
+.buddy.wave #head { animation: b-look 1.2s ease-in-out infinite; }
+.buddy.wave .arm.b { animation: b-wave .22s ease-in-out infinite alternate; }
+.buddy:not(.upright).wave .leg.front.b { transform-origin: 108px 88px; animation: b-wave .22s ease-in-out infinite alternate; }
+
 /* ---- Emotion & Physics States ---- */
 
 /* 1. Angry Reaction (single click poke) */
@@ -375,6 +383,56 @@
 @keyframes b-huhHead { 0%, 100% { transform: rotate(0); } 25%, 80% { transform: rotate(14deg); } }
 .buddy.m-huh #head { animation: b-huhHead 1.6s cubic-bezier(.34, 1.56, .64, 1); }
 .buddy.m-huh .fx-huh { display: inline; animation: b-fxPop 1.3s .2s both; }
+
+/* ---- Watching the cursor (pet.js sets the transforms on these wrappers) ---- */
+.buddy .look-head { transform-box: view-box; transition: transform .14s ease-out; }
+.buddy .look-eyes { transition: transform .1s ease-out; }
+.buddy.curious #eye-open { transform: scale(1.15); }
+
+/* Hovered: perk up with a quick wag and a tiny lean towards the cursor */
+.buddy.hovered.idle #tail, .buddy.hovered.sit #tail, .buddy.hovered.look #tail { animation-duration: .18s; }
+.buddy.hovered.idle .body-g { transform-box: fill-box; transform-origin: 50% 100%; transform: scale(1.02, .98); transition: transform .2s; }
+
+/* ---- Loved (click or stroke): hearts, closed happy eyes, wiggle ---- */
+.buddy .fx-hearts, .buddy .fx-treat, .buddy .deco-pumpkin { display: none; }
+.buddy .fx-hearts path { transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes b-heart { 0% { opacity: 0; transform: translateY(6px) scale(.3); } 25% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-22px) scale(.9); } }
+@keyframes b-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+.buddy.love .fx-hearts, .buddy.hearts .fx-hearts { display: inline; }
+.buddy.love .fx-hearts path, .buddy.hearts .fx-hearts path { animation: b-heart 1.3s ease-out infinite; }
+.buddy.love .fx-hearts .h2, .buddy.hearts .fx-hearts .h2 { animation-delay: .35s; }
+.buddy.love .fx-hearts .h3, .buddy.hearts .fx-hearts .h3 { animation-delay: .7s; }
+.buddy.love .jump { transform-origin: 80px 116px; animation: b-wiggle .5s ease-in-out infinite; }
+.buddy.love #eye-open { display: none; }
+.buddy.love #eye-closed, .buddy.love #tongue { display: inline; }
+.buddy.love #tail { animation-duration: .12s; }
+
+/* ---- Eating a treat: treat floats to the mouth, chomp chomp, crumbs ---- */
+@keyframes b-treatIn { 0% { opacity: 0; transform: translate(14px, -30px) scale(.4); } 20% { opacity: 1; transform: translate(10px, -16px) scale(1); }
+  38% { transform: translate(0, 0) scale(1); } 55% { transform: scale(.7); clip-path: inset(0 0 0 35%); } 75% { transform: scale(.45); clip-path: inset(0 0 0 65%); opacity: 1; } 85%, 100% { opacity: 0; transform: scale(.2); } }
+@keyframes b-crumbs { 0%, 45% { opacity: 0; transform: translateY(0); } 55% { opacity: 1; } 100% { opacity: 0; transform: translateY(14px); } }
+@keyframes b-chomp { 0%, 35%, 100% { transform: rotate(0); } 45%, 65%, 85% { transform: rotate(7deg) translateY(2px); } 55%, 75% { transform: rotate(-2deg); } }
+.buddy.eat .fx-treat { display: inline; }
+.buddy.eat .fx-treat .treat { transform-box: fill-box; transform-origin: center; animation: b-treatIn 2.4s ease-in-out forwards; }
+.buddy.eat .fx-treat .crumbs { animation: b-crumbs 2.4s ease-out forwards; }
+.buddy.eat #head { animation: b-chomp 2.4s ease-in-out; }
+.buddy.eat #tongue { display: inline; }
+.buddy.eat #tail { animation-duration: .14s; }
+
+/* ---- Mood (from task progress) ---- */
+/* Sulky: droopy head, slow tail, a little grumble when idle */
+.buddy.mood-sulky.idle #head, .buddy.mood-sulky.sit #head { transform: translateY(3px) rotate(7deg); transition: transform .4s; }
+.buddy.mood-sulky #tail { animation-duration: 1.4s; }
+.buddy.mood-sulky.idle #eye-open { transform: scaleY(.7); }
+/* Happy: bouncier idle and a faster wag */
+@keyframes b-happyBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+.buddy.mood-happy.idle .jump { animation: b-happyBob 1.2s ease-in-out infinite; }
+.buddy.mood-happy #tail { animation-duration: .3s; }
+/* Hungry: a sweat drop now and then */
+.buddy.hungry.idle .fx-sweat { display: inline; animation: b-fxDrip 1.6s 2s infinite; }
+
+/* ---- Seasons ---- */
+.buddy.season-halloween .deco-pumpkin { display: inline; }
 
 /* ---- accessibility / performance ---- */
 .buddy.reduced *, .buddy.reduced .jump { animation-duration: 0s !important; animation-iteration-count: 1 !important; }

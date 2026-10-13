@@ -1,7 +1,7 @@
 {
   "name": "desktop-companion",
   "productName": "Desktop Buddy",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A desktop pet companion with a task manager that walks onto your screen to remind you.",
   "main": "electron/main.js",
   "scripts": {
@@ -12,9 +12,10 @@
     "test:unit": "vitest run tests/unit",
     "test:server": "cd server && npm test",
     "test:all": "npm test && npm run test:server",
-    "dist": "vite build && electron-builder --win",
+    "dist": "node scripts/make-icons.js && vite build && electron-builder --win",
     "server": "cd server && npm start",
-    "test:e2e": "vite build && vitest run tests/e2e"
+    "test:e2e": "vite build && vitest run tests/e2e",
+    "icons": "node scripts/make-icons.js"
   },
   "build": {
     "appId": "com.devwerks.desktopbuddy",
@@ -27,7 +28,8 @@
       "!**/*.test.js"
     ],
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "win": {
       "target": [
@@ -37,18 +39,29 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "build/icon.ico"
     },
     "nsis": {
-      "oneClick": false,
+      "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "runAfterFinish": true
+      "createStartMenuShortcut": true,
+      "shortcutName": "Desktop Buddy",
+      "runAfterFinish": true,
+      "differentialPackage": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false
     },
     "asarUnpack": [
       "electron/capture/*.ps1"
-    ]
+    ],
+    "electronLanguages": [
+      "en-US"
+    ],
+    "compression": "normal"
   },
   "license": "MIT",
   "devDependencies": {

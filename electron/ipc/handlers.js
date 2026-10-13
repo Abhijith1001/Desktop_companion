@@ -4,7 +4,14 @@ const v = require('../services/validation');
 const { nextOccurrence, isRecurring } = require('../scheduler/recurrence');
 
 const MAX_CALENDAR_ITEMS = 1000;
-const captureDelay = require('zod').z.number().int().min(0).max(10);
+const { z } = require('zod');
+
+const captureDelay = z.number().int().min(0).max(10);
+const onboardingCue = z.object({
+  cue: z.enum(['show', 'say', 'wave', 'tray', 'home']),
+  text: z.string().max(300).optional(),
+  ms: z.number().int().min(500).max(15000).optional(),
+});
 
 // Expands tasks (including every occurrence of recurring ones) within [from, to].
 function calendarRange(list, from, to) {
@@ -34,7 +41,7 @@ function calendarRange(list, from, to) {
 
 function createHandlers({
   tasks, settings, engine, sync, pet, info, exportData, confirmDeleteAccount, openExternal, openLogs, previewBuddy,
-  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes,
+  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare,
 }) {
   const changed = () => { engine.wake(); sync.notifyLocalChange(); };
 
@@ -55,6 +62,9 @@ function createHandlers({
       return calendarRange(tasks.list(), f, t);
     },
 
+    'progress:state': () => progress.state(),
+    'progress:equip': (patch) => progress.equip(v.parse(v.equipInput, patch)),
+
     'settings:get': () => settings.getAll(),
     'settings:update': (patch) => settings.update(v.parse(v.settingsPatch, patch)),
 
@@ -69,6 +79,10 @@ function createHandlers({
     'buddy:show': () => { pet().show(); return true; },
     'buddy:hide': () => { pet().hide(); return true; },
     'buddy:preview': () => { previewBuddy(); return true; },
+
+    // ---- First-run welcome and tutorial
+    'onboarding:cue': (c) => onboarding.cue(v.parse(onboardingCue, c)),
+    'onboarding:finish': (opts) => onboarding.finish(v.parse(z.object({ startWithWindows: z.boolean() }), opts)),
 
     'sync:status': () => sync.status(),
     'sync:now': () => sync.syncNow(),
@@ -116,6 +130,13 @@ function createHandlers({
     'ai:status': () => ai.status(),
     'ai:set-key': (key) => ai.setKey(key == null ? null : v.parse(v.apiKey, key)),
     'ai:ask': (req) => ai.ask(v.parse(v.aiRequest, req)),
+
+    // ---- Weather and the buddy's mood/treats
+    'weather:search': (q) => weather.search(v.parse(v.weatherQuery, q)),
+    'weather:locate': () => weather.locate(),
+    'weather:current': () => weather.current(),
+    'buddy:stats': () => buddyCare.stats(),
+    'buddy:feed': () => buddyCare.feed(),
   };
 }
 

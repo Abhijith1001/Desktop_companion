@@ -10,6 +10,7 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
   position: absolute; left: 50%; bottom: 0; width: 160px; height: 30px;
   transform: translateX(-50%); pointer-events: none; opacity: 0; z-index: 0;
 }
+.dust-ring svg { width: 100%; height: 100%; overflow: visible; }
 .dust-ring.active { animation: b-dustPuff .45s ease-out forwards; }
 .dust-ring.active .dust-p.p1 { animation: b-puffLeft .4s ease-out forwards; }
 .dust-ring.active .dust-p.p2 { animation: b-puffLeft .42s ease-out forwards; }
@@ -96,4 +97,32 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
 @media (prefers-reduced-motion: reduce) {
   #bubble, .btn { transition: none; }
   #bubble.show.pop, .badge.ring { animation: none; }
+}
+
+/* ---------- hover stats line ---------- */
+#bubble .stats { margin-top: 4px; font-size: 12px; color: var(--muted); }
+
+/* ---------- weather around the buddy (built by pet.js) ---------- */
+.weather { position: absolute; left: calc(50% - 115px); bottom: 0; width: 230px; height: 185px; pointer-events: none; overflow: hidden; }
+.weather i { position: absolute; display: block; }
+.weather .cloud { top: 6px; left: 50%; width: 92px; height: 30px; margin-left: -46px; border-radius: 20px; background: #eef2f7;
+  box-shadow: 22px -12px 0 4px #eef2f7, -18px -6px 0 0 #eef2f7, 0 3px 8px rgba(0, 0, 0, .12); opacity: .95; }
+.weather .cloud.dark { background: #8d97a6; box-shadow: 22px -12px 0 4px #8d97a6, -18px -6px 0 0 #8d97a6, 0 3px 8px rgba(0, 0, 0, .2); }
+.weather .cloud.drift { animation: w-drift 14s ease-in-out infinite alternate; }
+.weather .drop { top: 30px; width: 2px; height: 12px; border-radius: 2px; background: linear-gradient(transparent, #5fa8e8); animation: w-fall .8s linear infinite; }
+.weather .flake { top: 26px; width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 3px rgba(80, 120, 170, .6); animation: w-snow 4.5s linear infinite; }
+.weather .flash { inset: 0; background: #fff; opacity: 0; animation: w-flash 7s infinite; }
+.weather .mist { left: -40%; width: 180%; height: 18px; border-radius: 50%; background: rgba(225, 230, 236, .55); filter: blur(4px); animation: w-mist 9s ease-in-out infinite alternate; }
+.weather .sun { top: 4px; right: 18px; width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(#ffe57a, #ffc531);
+  box-shadow: 0 0 0 6px rgba(255, 210, 70, .25), 0 0 18px 8px rgba(255, 200, 60, .35); animation: w-sun 4s ease-in-out infinite alternate; }
+@keyframes w-fall { from { transform: translateY(0); opacity: .9; } to { transform: translateY(150px); opacity: .5; } }
+@keyframes w-snow { 0% { translate: 0 0; opacity: 0; } 10% { opacity: 1; } 50% { translate: 10px 100px; } 100% { translate: -6px 155px; opacity: .7; } }
+@keyframes w-flash { 0%, 90%, 94%, 100% { opacity: 0; } 91%, 93% { opacity: .55; } }
+@keyframes w-drift { from { transform: translateX(-34px); } to { transform: translateX(34px); } }
+@keyframes w-mist { from { transform: translateX(-12%); } to { transform: translateX(12%); } }
+@keyframes w-sun { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .weather i { animation: none !important; }
+  .weather .drop, .weather .flake, .weather .flash { display: none; }
 }

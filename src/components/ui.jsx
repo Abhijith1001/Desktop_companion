@@ -87,12 +87,12 @@ export function PriorityChip({ priority }) {
 }
 
 // Renders a character using the shared markup and animation CSS.
-export function BuddyPreview({ id, state = 'idle', size = 1, className = '' }) {
+export function BuddyPreview({ id, state = 'idle', size = 1, className = '', accessory = null }) {
   const c = window.CHARACTERS[id] || window.CHARACTERS.dog;
   return (
     <div className={`buddy ${state} ${c.upright ? 'upright' : ''} ${className}`}
       style={{ width: 160 * size, height: 130 * size }}
       // Markup is our own static SVG from characters.js, never user input.
-      dangerouslySetInnerHTML={{ __html: window.buddyMarkup(id) }} />
+      dangerouslySetInnerHTML={{ __html: window.buddyMarkup(id, accessory) }} />
   );
 }

@@ -6,6 +6,8 @@ const systemZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UT
 
 const DEFAULTS = {
   character: 'dog',
+  buddyName: '',                 // name the user gave the buddy during onboarding
+  onboarded: false,              // welcome flow finished (or skipped)
   characterSize: 1,              // 0.75 – 1.5
   animation: 'full',             // full | reduced | off
   personality: true,             // character-specific dialogue vs plain reminders
@@ -29,6 +31,12 @@ const DEFAULTS = {
   pausedUntil: null,             // ISO; reminders held until then
   position: null,                // { x, displayId } last dropped position
   theme: 'system',               // system | light | dark
+  followCursor: true,            // watch and sometimes chase the mouse cursor
+  perchOnWindows: true,          // sometimes jump up and sit on top of the active window
+  // Local weather (Open-Meteo). location: { name, lat, lon, country } or null.
+  weather: { enabled: true, location: null, unit: 'C' },
+  accessory: null,               // unlocked accessory id (see services/progress.js)
+  background: 'meadow',          // unlocked background id
   // Text capture from other apps. Shortcuts are Electron accelerators.
   capture: { shortcut: 'Control+Shift+B', clipboardFallback: true, ocrEnabled: false, ocrShortcut: 'Control+Shift+O' },
   // Local dev server: serverUrl: 'http://localhost:4000'
