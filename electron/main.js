@@ -27,8 +27,11 @@ const { importLegacy } = require('./legacy');
 const { makeIcon } = require('./icon');
 const { createOnboarding } = require('./onboarding');
 const { createBuddyLife } = require('./buddyLife');
+const { createSysmon } = require('./services/sysmon');
 const { createHabitService } = require('./services/habits');
 const { createCommunity } = require('./services/community');
+const { createPhoneMirror } = require('./phone');
+const { createNotificationWatcher } = require('./phone/notifications');
 const dialogue = require('./dialogue');
 
 const APP_ID = 'com.devwerks.desktopbuddy';
@@ -58,7 +61,8 @@ function start() {
     community?.reportCrash({ source: 'main', message: String(err && err.message || err), stack: err && err.stack });
   });
 
-  let db; let settings; let tasks; let engine; let sync; let presenter; let pet; let manager; let tray;
+  let db; let settings; let tasks; let engine; let sync; let presenter; let pet; let manager; let tray; let phone; let phoneAlerts;
+  let sysmon;
   let bookmarks; let capture; let ai; let notes; let onboarding; let progress; let life; let updater; let habits; let community;
 
   const characters = () => {
@@ -91,7 +95,10 @@ function start() {
     return settings.setSecret(name, safeStorage.encryptString(value).toString('base64'));
   };
 
-  const openTasks = (route) => manager.open(route);
+  const openTasks = (route) => {
+    manager.open(route);
+    community?.refresh?.();
+  };
 
   // ---- Text capture. The latest result waits here until the chat picks it up,
   // so it is not lost if the window is still loading.
@@ -320,6 +327,12 @@ function start() {
 
     const icon = makeIcon(32);
     manager = createManager({ icon, log });
+    phone = createPhoneMirror({
+      log, isPackaged: app.isPackaged, resourcesPath: process.resourcesPath,
+      send: (ch, payload) => manager.send(ch, payload),
+      readClipboard: () => clipboard.readText(),
+      writeClipboard: (text) => clipboard.writeText(text),
+    });
     presenter = createPresenter({ getPet: () => pet, settings, log, getEngine: () => engine, openTasks, icon });
     engine = createEngine({ db, tasks, settings, presenter, log });
     sync = createSync({
@@ -334,10 +347,11 @@ function start() {
     });
     onboarding.prepare({ autostart: process.argv.includes('--autostart') });
 
+    sysmon = createSysmon({ log, onChange: (v) => pet && pet.send('pet:system', { hot: v.hot, reasons: v.reasons }) });
     let welcomed = false;
     pet = createPetWindow({
       settings, log,
-      hint: () => ({ ...hint(), stats: life.hintStats() }),
+      hint: () => ({ ...hint(), stats: life.hintStats(), system: sysmon.line(), hot: sysmon.current().hot, reasons: sysmon.current().reasons }),
       onPetted: () => life.onPetted(),
       onWake: (kind) => life.onWake(kind),
       onClick: () => openTasks('/tasks'),
@@ -361,10 +375,43 @@ function start() {
 
     tray = createTray({ icon, settings, tasks, characters, getPet: () => pet, openTasks, pause, exit, care: life });
 
+    // A connected phone's notifications: the full list goes to the Phone page;
+    // the buddy says who, never what (its bubble is visible to anyone nearby).
+    phoneAlerts = createNotificationWatcher({
+      adb: phone.adb, getSerial: phone.readySerial, log,
+      enabled: () => phone.available(),
+      announce: () => (!settings.get('phoneAlerts') ? 'off' : settings.get('phoneAlertsAll') ? 'all' : 'chat'),
+      onList: (list) => manager.send('phone:notifications', list),
+      onMessage: ({ app: appName, from, count, names }) => {
+        const text = from
+          ? `📱 New ${appName} notification from ${from}`
+          : `📱 ${count} new notifications (${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''})`;
+        say(text, 6000);
+      },
+    });
+    phoneAlerts.start();
+
+    // A linked phone reconnects by itself, so notifications keep coming after
+    // the window closes or the app restarts (wireless debugging drops often).
+    const reconnectPhone = async () => {
+      const link = settings.get('phoneLink');
+      if (!link?.enabled || !phone.available()) return;
+      phone.markUsed();
+      try {
+        if (await phone.readySerial()) return;
+        const m = /^(.+):(\d+)$/.exec(link.address || '');
+        if (m) await phone.connect(m[1], Number(m[2]));
+      } catch { /* phone away; try again later */ }
+    };
+    reconnectPhone();
+    setInterval(reconnectPhone, 30_000);
+
     // ---- IPC from the task manager window
     const handlers = createHandlers({
       tasks, settings, engine, sync, pet: () => pet, exportData, confirmDeleteAccount, previewBuddy,
-      bookmarks, ai, confirmClearBookmarks, notes, onboarding, progress, updater: () => updater, weather: life.weather, buddyCare: life, habits, community,
+      bookmarks, ai, confirmClearBookmarks, notes, onboarding, progress, updater: () => updater, weather: life.weather, buddyCare: life, habits, community, phone,
+      phoneNotifications: () => (phoneAlerts ? phoneAlerts.list() : []),
+      clearPhoneNotifications: () => (phoneAlerts ? phoneAlerts.clear() : true),
       copyText: (text) => clipboard.writeText(text),
       capture: {
         selection: (delay) => runCapture('selection', delay),
@@ -429,6 +476,7 @@ function start() {
     });
     updater.start();
     life.start();
+    sysmon.start();
     sync.start();
     community.start();
     app.on('render-process-gone', (_e, _wc, d) => {
@@ -459,7 +507,7 @@ function start() {
 
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
-    try { engine && engine.stop(); sync && sync.stop(); life && life.stop(); updater && updater.stop(); pet && pet.destroy(); } catch { /* shutting down */ }
+    try { engine && engine.stop(); sync && sync.stop(); life && life.stop(); sysmon && sysmon.stop(); updater && updater.stop(); community && community.stop(); phoneAlerts && phoneAlerts.stop(); phone && phone.shutdown(); pet && pet.destroy(); } catch { /* shutting down */ }
     try { db && db.close(); } catch { /* already closed */ }
     log.info('stopped');
   });

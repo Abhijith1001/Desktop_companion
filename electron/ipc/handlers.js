@@ -14,6 +14,28 @@ const onboardingCue = z.object({
   ms: z.number().int().min(500).max(15000).optional(),
 });
 
+// Phone mirror inputs. Serials and hosts go to adb as separate arguments
+// (never a shell), but are still kept to the characters adb itself uses.
+const phoneHost = z.string().regex(/^(?:\d{1,3}\.){3}\d{1,3}$|^[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}$/, 'Enter the IP address shown on the phone');
+const phonePort = z.number().int().min(1).max(65535);
+const phoneSerial = z.string().regex(/^\w[\w.:-]{0,127}$/);
+const phonePos = { x: z.number().finite(), y: z.number().finite(), width: z.number().int().min(1).max(8192), height: z.number().int().min(1).max(8192) };
+const phoneInput = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('touch'), action: z.enum(['DOWN', 'UP', 'MOVE']), ...phonePos }),
+  z.object({ kind: z.literal('scroll'), ...phonePos, hscroll: z.number().finite(), vscroll: z.number().finite() }),
+  z.object({ kind: z.literal('text'), text: z.string().min(1).max(300) }),
+  z.object({ kind: z.literal('key'), action: z.enum(['DOWN', 'UP']), keycode: z.number().int().min(0).max(400), metastate: z.number().int().min(0).max(0xffff).optional() }),
+  z.object({ kind: z.literal('button'), button: z.enum(['back', 'home', 'recents', 'power', 'volumeUp', 'volumeDown', 'notifications', 'rotate']) }),
+  z.object({ kind: z.literal('paste') }),
+  z.object({ kind: z.literal('reset') }),
+  z.object({ kind: z.literal('screen'), on: z.boolean() }),
+]);
+const phoneStart = z.object({
+  quality: z.enum(['low', 'balanced', 'high']).optional(), screenOff: z.boolean().optional(),
+  mode: z.enum(['mirror', 'separate']).optional(),
+  startApp: z.string().regex(/^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/).max(150).nullable().optional(),
+});
+
 // Expands tasks (including every occurrence of recurring ones) within [from, to].
 function calendarRange(list, from, to) {
   const out = [];
@@ -42,7 +64,7 @@ function calendarRange(list, from, to) {
 
 function createHandlers({
   tasks, settings, engine, sync, pet, info, exportData, confirmDeleteAccount, openExternal, openLogs, previewBuddy,
-  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare, updater, habits, community,
+  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare, updater, habits, community, phone, phoneNotifications = () => [], clearPhoneNotifications = () => true,
 }) {
   const changed = () => { engine.wake(); sync.notifyLocalChange(); };
 
@@ -123,10 +145,12 @@ function createHandlers({
     'app:open-external': (url) => { openExternal(v.parse(v.safeUrl.refine((s) => s !== ''), url)); return true; },
     'app:open-logs': () => openLogs(),
 
-    // ---- Feedback, opt-in crash reports, announcements (server /api/public)
     'feedback:send': (input) => community.sendFeedback(v.parse(v.feedbackInput, input)),
     'errors:report': (input) => { community.reportCrash({ source: 'renderer', ...v.parse(v.errorReport, input) }); return true; },
-    'announcements:list': () => community.announcements(),
+    'announcements:list': () => {
+      community?.refresh?.();
+      return community ? community.announcements() : [];
+    },
     'announcements:dismiss': (id) => community.dismiss(v.parse(z.string().min(1).max(64), id)),
     'updates:status': () => updater().status(),
     'updates:check': () => updater().check(),
@@ -182,6 +206,21 @@ function createHandlers({
       }
       return true;
     },
+    'buddy:sit': () => {
+      const p = typeof pet === 'function' ? pet() : pet;
+      if (p && typeof p.sit === 'function') p.sit();
+      return true;
+    },
+    'buddy:stretch': () => {
+      const p = typeof pet === 'function' ? pet() : pet;
+      if (p && typeof p.stretch === 'function') p.stretch();
+      return true;
+    },
+    'buddy:celebrate': (text) => {
+      const p = typeof pet === 'function' ? pet() : pet;
+      if (p && typeof p.celebrate === 'function') p.celebrate(text ? v.parse(z.string().max(300), text) : undefined);
+      return true;
+    },
 
     // ---- Habits
     'habits:list': (opts) => habits.list(opts ?? {}),
@@ -193,6 +232,22 @@ function createHandlers({
     'habits:uncomplete': (id, date) => habits.uncomplete(v.parse(v.id, id), date ? v.parse(v.isoDate, date) : undefined),
     'habits:range': (from, to) => habits.rangeCompletions(v.parse(v.isoDate, from), v.parse(v.isoDate, to)),
     'habits:streak': (id) => habits.streak(v.parse(v.id, id)),
+
+    // ---- Phone mirror (local network only)
+    'phone:status': () => phone.status(),
+    'phone:notifications': () => phoneNotifications(),
+    'phone:notifications-clear': () => clearPhoneNotifications(),
+    'phone:devices': () => phone.devices(),
+    'phone:discover': () => phone.discover(),
+    'phone:pair': (host, port, code) => phone.pair(v.parse(phoneHost, host), v.parse(phonePort, port), v.parse(z.string().regex(/^\d{6}$/, 'The pairing code is 6 digits'), code)),
+    'phone:qr-start': () => phone.qrStart(),
+    'phone:qr-cancel': () => phone.qrCancel(),
+    'phone:connect': (host, port) => phone.connect(v.parse(phoneHost, host), v.parse(phonePort, port)),
+    'phone:disconnect': (serial) => phone.disconnect(v.parse(phoneSerial, serial)),
+    'phone:start': (serial, opts) => phone.start(v.parse(phoneSerial, serial), v.parse(phoneStart, opts ?? {})),
+    'phone:stop': () => phone.stop(),
+    'phone:view': (on) => phone.setViewing(v.parse(z.boolean(), on)),
+    'phone:input': (evt) => phone.input(v.parse(phoneInput, evt)),
   };
 }
 

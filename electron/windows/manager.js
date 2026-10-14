@@ -9,7 +9,7 @@ function isAppUrl(url) {
   return url.startsWith('file://');
 }
 
-function createManager({ icon, log }) {
+function createManager({ icon, log, onHide = () => {} }) {
   let win = null;
 
   function create(route) {
@@ -33,6 +33,7 @@ function createManager({ icon, log }) {
       e.preventDefault();
       win.hide();
     });
+    win.on('hide', onHide);
     win.webContents.on('render-process-gone', (_e, d) => log.error('manager renderer crashed', { reason: d.reason }));
 
     const hash = route || '/tasks';

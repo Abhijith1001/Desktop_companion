@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToasts } from '../../stores';
 import { api } from '../../services/api';
+import { Modal } from '../../components/ui';
 
 const WELLNESS_PRESETS = [
-  { id: 'water',     icon: '💧', label: 'Drink water',           description: 'Stay hydrated!',                          color: '#3b82f6', interval: 60 },
-  { id: 'posture',   icon: '🪑', label: 'Check posture',         description: 'Sit up straight, relax your shoulders.',   color: '#8b5cf6', interval: 45 },
-  { id: 'eye-break', icon: '👁️', label: 'Eye break (20-20-20)', description: 'Look 20 feet away for 20 seconds.',        color: '#10b981', interval: 20 },
-  { id: 'stand-up',  icon: '🚶', label: 'Stand up',              description: 'Get up and move for a minute.',           color: '#f59e0b', interval: 90 },
+  { id: 'water',     icon: '💧', label: 'Drink water',           description: 'Stay hydrated! Keep a glass nearby.',                     color: '#3b82f6', interval: 60 },
+  { id: 'posture',   icon: '🪑', label: 'Check posture',         description: 'Sit up straight, relax your shoulders and unclench jaw.', color: '#8b5cf6', interval: 45 },
+  { id: 'eye-break', icon: '👁️', label: 'Eye break (20-20-20)', description: 'Look 20 feet away for 20 seconds to rest your eyes.',   color: '#10b981', interval: 20 },
+  { id: 'stand-up',  icon: '🚶', label: 'Stand up',              description: 'Get up, stretch your legs, and move for a minute.',      color: '#f59e0b', interval: 90 },
 ];
 
 function formatRem(ms) {
@@ -16,12 +17,26 @@ function formatRem(ms) {
   return min > 0 ? `${min}m` : `${sec}s`;
 }
 
-export default function WellnessWidget() {
+const STORE_KEY = 'buddy.wellness.active';
+const CHECK_MS = 5000;
+function remind(preset, toast) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification(`${preset.icon} ${preset.label}`, { body: preset.description }); } catch { /* notifications blocked */ }
+  }
+  toast(`${preset.icon} ${preset.label} — ${preset.description}`);
+  api.buddy.speak(`${preset.icon} ${preset.label}! ${preset.description}`).catch(() => {});
+}
+
+const loadActive =() => { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; } };
+const saveActive = (a) => { try { localStorage.setItem(STORE_KEY, JSON.stringify(a)); } catch { /* storage unavailable */ } };
+
+export default function WellnessWidget({ labelClass = '' }) {
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState({});
-  const [, tick] = useState(0);
-  const timers = useRef({});
+  // { [presetId]: { nextAt, intervalMin } }, saved so reminders survive reloads.
+  const [active, setActive] = useState(loadActive);
   const toast = useToasts((s) => s.push);
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
   // Request notification permission once
   useEffect(() => {
@@ -30,126 +45,130 @@ export default function WellnessWidget() {
     }
   }, []);
 
-  // Tick every 5s to refresh countdowns
+  useEffect(() => { saveActive(active); }, [active]);
+
+  // One clock check every few seconds instead of chained one-shot timers:
+  // each due reminder fires and is rescheduled from now, so it keeps repeating
+  // and catches up once (not many times) after the PC sleeps. Also refreshes
+  // the countdowns.
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const [, tick] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => tick((n) => n + 1), 5000);
+    const check = () => {
+      const now = Date.now();
+      const due = Object.entries(activeRef.current).filter(([, r]) => now >= r.nextAt);
+      tick((n) => n + 1);
+      if (!due.length) return;
+      for (const [id] of due) {
+        const preset = WELLNESS_PRESETS.find((p) => p.id === id);
+        if (preset) remind(preset, toastRef.current);
+      }
+      setActive((a) => {
+        const next = { ...a };
+        for (const [id] of due) if (next[id]) next[id] = { ...next[id], nextAt: now + next[id].intervalMin * 60_000 };
+        return next;
+      });
+    };
+    const t = setInterval(check, CHECK_MS);
     return () => clearInterval(t);
   }, []);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => Object.values(timers.current).forEach(clearTimeout);
-  }, []);
-
-  const schedule = useCallback((id, intervalMin) => {
-    clearTimeout(timers.current[id]);
-    const nextAt = Date.now() + intervalMin * 60_000;
-    setActive((a) => ({ ...a, [id]: { nextAt, intervalMin } }));
-    timers.current[id] = setTimeout(() => {
-      const preset = WELLNESS_PRESETS.find((p) => p.id === id);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        try { new Notification(`${preset.icon} ${preset.label}`, { body: preset.description }); } catch { /* */ }
-      }
-      toast(`${preset.icon} ${preset.label} — ${preset.description}`);
-      try { api.buddy.speak(`${preset.icon} ${preset.label}! ${preset.description}`); } catch { /* */ }
-      // Auto-reschedule
-      schedule(id, intervalMin);
-    }, intervalMin * 60_000);
-  }, [toast]);
-
   const toggle = useCallback((id, intervalMin) => {
     setActive((a) => {
-      if (a[id]) {
-        clearTimeout(timers.current[id]);
-        const next = { ...a }; delete next[id]; return next;
-      }
-      // Will schedule after state update via effect
-      return a;
+      const next = { ...a };
+      if (next[id]) delete next[id];
+      else next[id] = { nextAt: Date.now() + intervalMin * 60_000, intervalMin };
+      return next;
     });
-    setActive((a) => {
-      if (!a[id]) {
-        // Not active — enable it
-        clearTimeout(timers.current[id]);
-        const nextAt = Date.now() + intervalMin * 60_000;
-        timers.current[id] = setTimeout(() => {
-          const preset = WELLNESS_PRESETS.find((p) => p.id === id);
-          if ('Notification' in window && Notification.permission === 'granted') {
-            try { new Notification(`${preset.icon} ${preset.label}`, { body: preset.description }); } catch { /* */ }
-          }
-          toast(`${preset.icon} ${preset.label} — ${preset.description}`);
-          try { api.buddy.speak(`${preset.icon} ${preset.label}! ${preset.description}`); } catch { /* */ }
-          schedule(id, intervalMin);
-        }, intervalMin * 60_000);
-        return { ...a, [id]: { nextAt, intervalMin } };
-      }
-      return a;
-    });
-  }, [schedule, toast]);
+  }, []);
 
   const enabledCount = Object.keys(active).length;
 
   return (
-    <div className="relative">
-      <button type="button" id="wellness-toggle"
-        onClick={() => setOpen((o) => !o)}
-        className={`relative flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition-all ${
+    <>
+      <button
+        type="button"
+        id="wellness-toggle"
+        onClick={() => setOpen(true)}
+        className={`relative flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium transition-colors md:max-lg:justify-center ${
           open || enabledCount > 0
-            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
-            : 'text-stone-600 hover:bg-stone-200/70 dark:text-stone-300 dark:hover:bg-stone-800'
+            ? 'bg-emerald-100/90 text-emerald-950 font-semibold dark:bg-emerald-950/60 dark:text-emerald-300'
+            : 'text-stone-600 hover:bg-stone-200/70 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800/70 dark:hover:text-stone-100'
         }`}
         title="Wellness reminders">
-        <span aria-hidden="true">🌿</span>
-        <span>Wellness</span>
+        <span className="text-base shrink-0" aria-hidden="true">🌿</span>
+        <span className={labelClass}>Wellness</span>
         {enabledCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">
+          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[11px] font-bold text-white shadow-sm ${
+            labelClass ? 'ml-auto md:max-lg:absolute md:max-lg:right-0.5 md:max-lg:top-0.5 md:max-lg:ml-0 md:max-lg:h-4 md:max-lg:w-4 md:max-lg:text-[10px]' : 'ml-auto'
+          }`}>
             {enabledCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 mb-2 w-72 card p-4 shadow-2xl z-30">
-          <h3 className="mb-3 text-sm font-bold flex items-center gap-2">🌿 Wellness Reminders</h3>
-          <div className="grid gap-2">
-            {WELLNESS_PRESETS.map((p) => {
-              const isOn = !!active[p.id];
-              const rem = isOn ? formatRem(active[p.id].nextAt - Date.now()) : null;
-              return (
-                <button key={p.id} type="button"
-                  onClick={() => toggle(p.id, p.interval)}
-                  className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-all hover:scale-[1.01] active:scale-[.99] ${
-                    isOn ? '' : 'border-stone-200 dark:border-stone-700'
-                  }`}
-                  style={isOn ? { borderColor: p.color, background: `${p.color}18` } : {}}>
-                  <span className="text-2xl shrink-0">{p.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold">{p.label}</p>
-                      {isOn && rem && (
-                        <span className="text-[11px] font-mono shrink-0" style={{ color: p.color }}>⏱ {rem}</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-stone-500">{p.description}</p>
-                    <p className="text-[11px] text-stone-400 mt-0.5">
-                      Every {p.interval < 60 ? `${p.interval} min` : `${p.interval / 60}h`}
-                    </p>
-                  </div>
-                  <div className={`shrink-0 h-5 w-9 rounded-full transition-colors ${isOn ? 'bg-emerald-500' : 'bg-stone-200 dark:bg-stone-700'}`}>
-                    <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${isOn ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-3 text-[11px] text-stone-400 text-center">
-            Reminders fire even if this panel is closed
-          </p>
-        </div>
-      )}
+        <Modal title="🌿 Wellness Reminders" onClose={() => setOpen(false)}>
+          <div className="space-y-4">
+            <p className="text-sm text-stone-600 dark:text-stone-300">
+              One-click presets for healthy habits while working. Your desktop buddy sits with you and alerts you when it's time to stretch or hydrate.
+            </p>
 
-      {open && (
-        <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+            <div className="grid gap-2.5">
+              {WELLNESS_PRESETS.map((p) => {
+                const isOn = !!active[p.id];
+                const rem = isOn ? formatRem(active[p.id].nextAt - Date.now()) : null;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => toggle(p.id, p.interval)}
+                    className={`flex items-center gap-3.5 rounded-xl border-2 p-3 text-left transition-all hover:scale-[1.005] active:scale-[.99] ${
+                      isOn
+                        ? 'shadow-sm'
+                        : 'border-stone-200 bg-stone-50/50 hover:border-stone-300 dark:border-stone-700/80 dark:bg-stone-800/30'
+                    }`}
+                    style={isOn ? { borderColor: p.color, background: `${p.color}15` } : {}}>
+                    <span className="text-2xl shrink-0 p-1.5 rounded-xl bg-white dark:bg-stone-800 shadow-sm">
+                      {p.icon}
+                    </span>
+                    <div className="flex-1 min-w-0 pr-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">{p.label}</p>
+                        {isOn && rem && (
+                          <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-md shrink-0 bg-white/90 dark:bg-stone-800 shadow-sm" style={{ color: p.color }}>
+                            ⏱ in {rem}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{p.description}</p>
+                      <span className="inline-block text-[11px] font-medium text-stone-400 mt-1">
+                        Every {p.interval < 60 ? `${p.interval} min` : `${p.interval / 60}h`}
+                      </span>
+                    </div>
+                    {/* Toggle Switch */}
+                    <div className={`shrink-0 h-6 w-11 rounded-full p-0.5 transition-colors ${isOn ? 'bg-emerald-500' : 'bg-stone-300 dark:bg-stone-700'}`}>
+                      <div className={`h-5 w-5 rounded-full bg-white shadow-md transition-transform ${isOn ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-stone-200 dark:border-stone-800">
+              <span className="text-xs text-stone-500 dark:text-stone-400">
+                {enabledCount > 0
+                  ? `🌿 ${enabledCount} active reminder${enabledCount > 1 ? 's' : ''}`
+                  : 'No reminders on'}
+              </span>
+              <button type="button" className="btn-primary px-5" onClick={() => setOpen(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
-    </div>
+    </>
   );
 }

@@ -102,6 +102,9 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
 
 /* ---------- hover stats line ---------- */
 #bubble .stats { margin-top: 4px; font-size: 12px; color: var(--muted); }
+#bubble .stats.system { font-size: 11px; }
+#bubble .stats.hot { color: #e53935; font-weight: 700; }
+#bubble .stats.tip { font-size: 10.5px; opacity: .75; }
 
 /* ---------- weather around the buddy (built by pet.js) ---------- */
 .weather { position: absolute; left: calc(50% - 115px); bottom: 0; width: 230px; height: 185px; pointer-events: none; overflow: hidden; }
@@ -112,7 +115,7 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
 .weather .cloud.drift { animation: w-drift 14s ease-in-out infinite alternate; }
 .weather .drop { top: 30px; width: 2px; height: 12px; border-radius: 2px; background: linear-gradient(transparent, #5fa8e8); animation: w-fall .8s linear infinite; }
 .weather .flake { top: 26px; width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 3px rgba(80, 120, 170, .6); animation: w-snow 4.5s linear infinite; }
-.weather .flash { inset: 0; background: #fff; opacity: 0; animation: w-flash 7s infinite; }
+.weather .flash { inset: 0; background: radial-gradient(ellipse at 50% 15%, rgba(255, 255, 255, .9), rgba(255, 255, 255, .25) 40%, transparent 70%); opacity: 0; animation: w-flash 7s infinite; }
 .weather .mist { left: -40%; width: 180%; height: 18px; border-radius: 50%; background: rgba(225, 230, 236, .55); filter: blur(4px); animation: w-mist 9s ease-in-out infinite alternate; }
 .weather .sun { top: 4px; right: 18px; width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(#ffe57a, #ffc531);
   box-shadow: 0 0 0 6px rgba(255, 210, 70, .25), 0 0 18px 8px rgba(255, 200, 60, .35); animation: w-sun 4s ease-in-out infinite alternate; }
@@ -146,3 +149,73 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
 @keyframes sign-bump { 0% { transform: rotate(4deg) scale(1); } 40% { transform: rotate(-6deg) scale(1.15); } 100% { transform: rotate(4deg) scale(1); } }
 @media (prefers-reduced-motion: reduce) { #sign, #sign.bump { transition: opacity .2s; animation: none; } }
 #bubble.show ~ #sign { opacity: 0; }
+
+/* ---------- overheating: angry, red, smoking and on fire ---------- */
+.buddy.overheat .jump { animation: b-angryStomp .35s ease-in-out infinite; }
+.buddy.overheat #head { animation: b-angryHead .35s ease-in-out infinite; }
+.buddy.overheat #eye-open { transform: scaleY(0.55) scaleX(0.85); transform-origin: center; }
+.buddy.overheat #tail { animation: b-angryTail .12s ease-in-out infinite alternate; }
+.buddy.overheat svg {
+  filter: sepia(1) saturate(7) hue-rotate(-38deg) brightness(.92) drop-shadow(0 0 6px rgba(255, 61, 0, .85));
+  animation: heat-pulse .6s ease-in-out infinite alternate;
+}
+@keyframes heat-pulse { to { filter: sepia(1) saturate(9) hue-rotate(-42deg) brightness(1.05) drop-shadow(0 0 12px rgba(255, 110, 0, .95)); } }
+
+#heat, #fire { position: absolute; pointer-events: none; display: none; }
+#heat { z-index: 3; }
+#heat.on, #fire.on { display: block; }
+#fire .flames { position: absolute; left: 8%; right: 8%; bottom: 4px; height: 100%; filter: blur(1.4px); }
+#fire .flames .glow {
+  position: absolute; left: -6%; right: -6%; bottom: -6px; height: 55%; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 90%, rgba(255, 200, 60, .75), rgba(255, 90, 20, .45) 45%, transparent 72%);
+  animation: fire-glow .35s ease-in-out infinite alternate;
+}
+@keyframes fire-glow { from { opacity: .75; transform: scaleY(.95); } to { opacity: 1; transform: scaleY(1.08); } }
+/* One tongue: a teardrop pointing up whose colour cools as it rises. */
+#fire .flames i {
+  position: absolute; bottom: 0; width: var(--size); height: calc(var(--size) * 1.35);
+  margin-left: calc(var(--size) / -2);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+
+  animation: tongue 1s linear infinite;
+}
+#fire .flames i::before {
+  content: ''; position: absolute; inset: -30% 15% 30% 15%; border-radius: 50% 50% 0 0;
+  background: inherit; opacity: .9;
+}
+@keyframes tongue {
+  0%   { transform: translate(0, 4px) scale(.55);                       background: #fff7c2; box-shadow: 0 0 10px #ffe066; opacity: 0; }
+  10%  { opacity: 1; }
+  30%  { transform: translate(calc(var(--drift) * .3), calc(var(--rise) * .25)) scale(1.05);  background: #ffd23f; box-shadow: 0 0 12px #ffb300; }
+  60%  { transform: translate(calc(var(--drift) * .8), calc(var(--rise) * .6)) scale(.8);     background: #ff7a1a; box-shadow: 0 0 10px #ff5a00; opacity: .9; }
+  85%  { background: #e8331c; box-shadow: 0 0 6px #c62828; opacity: .55; }
+  100% { transform: translate(var(--drift), var(--rise)) scale(.2);                          background: #8e1b10; opacity: 0; }
+}
+#fire .embers { position: absolute; inset: 0; }
+#fire .embers i {
+  position: absolute; bottom: 10%; width: 3px; height: 3px; border-radius: 50%;
+  background: #ffd54f; box-shadow: 0 0 4px 1px #ff9100;
+  animation: ember 2s ease-out infinite;
+}
+@keyframes ember {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: translate(var(--drift), -150px); opacity: 0; }
+}
+#heat .smoke { position: absolute; width: 0; height: 0; }
+#heat .smoke i {
+  position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(90, 90, 90, .85), rgba(140, 140, 140, .4) 60%, transparent 72%);
+  opacity: 0; animation: smoke-up 1.2s ease-out infinite;
+}
+#heat .s-nose i, #heat .s-mouth i { --sx: 14px; }
+#heat.left .s-nose i, #heat.left .s-mouth i { --sx: -14px; }
+#heat .s-ear1 i { --sx: -8px; }
+#heat .s-ear2 i { --sx: 8px; }
+@keyframes smoke-up {
+  0%   { transform: translate(0, 0) scale(.4); opacity: .9; }
+  100% { transform: translate(var(--sx, 0), -34px) scale(2.2); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #fire .flames i, #fire .embers i, #heat .smoke i, .buddy.overheat svg { animation-duration: 2.4s !important; }
+}

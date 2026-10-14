@@ -11,6 +11,7 @@ const BASE_H = 400;
 const TICK_MS = 33;
 const SPEED = { WALKING: 2, RUNNING: 7, glide: 6 };
 const LOOK_RANGE = 113;      // ≈3 cm at 96 DPI, in DIPs: the buddy watches the cursor inside this
+const TURN_COOLDOWN_MS = 800; // least time between turning round to face the cursor
 const CHASE_RANGE = 450;     // cursor this close (horizontally) may get chased
 const AFK_SECONDS = 5 * 60;  // nap after this long without keyboard/mouse input
 const NIGHT_IDLE_SECONDS = 60;
@@ -41,6 +42,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   let hopDown = false;      // leaving a perch on purpose: land softly
   let afk = false;          // asleep because the user is away
   let look = null;          // last cursor offset sent to the renderer
+  let lastTurnAt = 0;
   let lastCursor = { x: 0, y: 0, movedAt: 0 };
   let lastChase = 0;
   let lastYawn = 0;
@@ -89,17 +91,24 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   // the window the buddy is sitting on.
   function bounds(d = display()) {
     const { w } = dims();
-    if (perch) {
+    if (perch && Number.isFinite(perch.left) && Number.isFinite(perch.right)) {
       const margin = 45 * size;
-      return { minX: perch.left + margin - w / 2, maxX: Math.max(perch.left + margin - w / 2, perch.right - margin - w / 2) };
+      const minX = perch.left + margin - w / 2;
+      const maxX = Math.max(minX, perch.right - margin - w / 2);
+      return { minX, maxX };
     }
-    const area = d?.workArea || { x: 0, y: 0, width: 1920, height: 1080 };
+    const area = d?.workArea || screen.getPrimaryDisplay()?.workArea || { x: 0, y: 0, width: 1920, height: 1080 };
     return { minX: area.x - 60, maxX: area.x + area.width - w + 60 };
   }
 
   function clampToDisplay() {
     const d = display();
-    const { minX, maxX } = bounds(d);
+    let { minX, maxX } = bounds(d);
+    if (!Number.isFinite(minX) || !Number.isFinite(maxX)) {
+      const area = screen.getPrimaryDisplay()?.workArea || { x: 0, y: 0, width: 1920, height: 1080 };
+      minX = area.x - 60;
+      maxX = area.x + area.width - dims().w + 60;
+    }
     if (!Number.isFinite(pos.x)) pos.x = maxX - 60;
     pos.x = Math.min(Math.max(pos.x, minX), maxX);
     if (!drag && !target) {
@@ -107,21 +116,26 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
       physics.vy = 0;
     }
     if (!Number.isFinite(pos.y)) pos.y = groundY(d);
+    if (!Number.isFinite(pos.y)) pos.y = (screen.getPrimaryDisplay()?.workArea?.height || 1080) - dims().h;
     apply();
   }
 
   function apply() {
     if (!alive()) return;
     if (!Number.isFinite(pos.x) || !Number.isFinite(pos.y)) {
-      clampToDisplay();
-      return;
+      const area = screen.getPrimaryDisplay()?.workArea || { x: 0, y: 0, width: 1920, height: 1080 };
+      pos.x = area.x + area.width - dims().w - 40;
+      pos.y = area.y + area.height - dims().h;
     }
     const rx = Math.round(pos.x);
     const ry = Math.round(pos.y);
+    if (!Number.isInteger(rx) || !Number.isInteger(ry)) return;
     const key = `${rx},${ry}`;
     if (key === lastPos) return;
     lastPos = key;
-    win.setPosition(rx, ry);
+    try {
+      win.setPosition(rx, ry);
+    } catch { /* window could be closing or unready */ }
   }
 
   function needsLoop() {
@@ -312,6 +326,16 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
 
   let ambientCountdown = 2;
   // Ambient behaviour + timed-state expiry, once a second.
+  // Hovering the buddy stops it where it is (reminders and the tour keep going).
+  function holdStill() {
+    if (drag || controller.reminderActive || tourHome || !controller.isMoving) return;
+    target = null;
+    physics.targetVx = 0;
+    physics.vx = 0;
+    controller.transition(STATES.IDLE);
+    ambientCountdown = 4;
+  }
+
   function think() {
     if (!alive() || !win.isVisible()) return;
     controller.tick();
@@ -349,6 +373,8 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
       if (maybeChase() || maybePerch()) { ensureLoop(); return; }
       // Stay put and watch while the cursor is close.
       if (look && controller.state !== STATES.WALKING) { ensureLoop(); return; }
+      // Stay put while hovered.
+      if (overBuddy) { holdStill(); ensureLoop(); return; }
       ambientCountdown--;
       if (ambientCountdown <= 0) {
         if (controller.state === STATES.WALKING) {
@@ -495,8 +521,16 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     const headY = top + hitbox.h * size * 0.3;
     const dx = (c.x - headX) / size;
     const dy = (c.y - headY) / size;
-    // Turn round to face a cursor behind the buddy (with a little hysteresis).
-    if (CALM.includes(controller.state) && !target && Math.sign(dx) !== dir && Math.abs(dx) > 30) setDir(Math.sign(dx));
+    // Turn round to face a cursor behind the buddy. Measured from the body's
+    // centre, which doesn't move on turning (the head does, so measuring from
+    // it made a cursor near the middle flip the buddy back and forth forever),
+    // with a dead zone and a short cooldown between turns.
+    const fromCentre = (c.x - (left + right) / 2) / size;
+    if (CALM.includes(controller.state) && !target && Math.sign(fromCentre) !== dir && Math.abs(fromCentre) > 30
+        && Date.now() - lastTurnAt > TURN_COOLDOWN_MS) {
+      lastTurnAt = Date.now();
+      setDir(Math.sign(fromCentre));
+    }
     setLook({ dx: Math.round(dx), dy: Math.round(dy), inside: gap === 0 });
   }
 
@@ -568,7 +602,10 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
       const x = (c.x - pos.x) / size;
       const y = (c.y - pos.y) / size;
       const inside = x >= hitbox.x && x <= hitbox.x + hitbox.w && y >= hitbox.y && y <= hitbox.y + hitbox.h;
-      if (inside && !overBuddy) win.setIgnoreMouseEvents(false);
+      if (inside && !overBuddy) {
+        win.setIgnoreMouseEvents(false);
+        holdStill();
+      }
       overBuddy = inside;
       trackCursor(c);
     }, 60);
@@ -888,6 +925,22 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
       if (!alive() || !win.isVisible()) return;
       if (!controller.reminderActive) controller.transition(STATES.SPEAKING);
       send('pet:say', { text, ms });
+    },
+    // Sits quietly during focus mode (resets ambient wander countdown)
+    sit() {
+      if (!alive() || !win.isVisible() || controller.reminderActive) return;
+      if (controller.state === STATES.SLEEPING) controller.wake();
+      controller.transition(STATES.SITTING);
+      ambientCountdown = 60;
+    },
+    // Stretches with user on break
+    stretch() {
+      if (!alive() || !win.isVisible() || controller.reminderActive) return;
+      if (controller.state === STATES.SLEEPING) controller.wake();
+      send('pet:state', { css: 'stretch', dir });
+      setTimeout(() => {
+        if (alive() && !controller.reminderActive) controller.transition(STATES.IDLE);
+      }, 3500);
     },
     // Munch a treat (the caller has already spent it).
     eat(text) {

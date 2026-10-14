@@ -32,4 +32,5 @@ export const api = {
   habits: wrap(bridge.habits),
   community: wrap(bridge.community),
   calendar: wrap(bridge.calendar),
+  phone: wrap(bridge.phone),
 };

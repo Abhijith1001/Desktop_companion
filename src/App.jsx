@@ -17,6 +17,7 @@ import WelcomePage from './pages/WelcomePage';
 import ProgressPage from './pages/ProgressPage';
 import PomodoroPage from './pages/PomodoroPage';
 import HabitsPage from './pages/HabitsPage';
+import PhonePage from './pages/PhonePage';
 import Confetti from './features/progress/Confetti';
 import AnnouncementBanner from './features/community/AnnouncementBanner';
 import QuickCapture from './features/capture/QuickCapture';
@@ -98,6 +99,7 @@ export default function App() {
   else if (match('/bookmarks/:id', path)) page = <BookmarksPage selectedId={match('/bookmarks/:id', path).id} />;
   else if (path === '/pomodoro') page = <PomodoroPage />;
   else if (path === '/habits') page = <HabitsPage />;
+  else if (path === '/phone') page = <PhonePage />;
   else if (path === '/tasks/new') page = <TasksPage creating />;
   else if (view) page = <TasksPage view={view.view} />;
   else {

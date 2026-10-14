@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useToasts } from '../stores';
 import Icon from './Icon';
 
@@ -11,8 +12,9 @@ export function Modal({ title, onClose, children, wide }) {
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('keydown', onKey); prev?.focus?.(); };
   }, [onClose]);
-  return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto overscroll-contain bg-stone-950/40 p-0 sm:items-start sm:p-4 sm:pt-[10vh]"
+
+  const modalNode = (
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto overscroll-contain bg-stone-950/40 p-0 sm:items-start sm:p-4 sm:pt-[10vh]"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div ref={ref} role="dialog" aria-modal="true" aria-label={title}
         className={`dialog-in card w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-[92vh] overflow-y-auto rounded-b-none p-5 shadow-2xl sm:rounded-b-xl`}>
@@ -24,6 +26,8 @@ export function Modal({ title, onClose, children, wide }) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalNode, document.body) : modalNode;
 }
 
 export function Toasts() {

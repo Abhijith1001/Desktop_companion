@@ -8,11 +8,17 @@ const IP_SERVICES = [
   { url: 'https://ipapi.co/json/', country: 'country_name' },
   { url: 'https://get.geojs.io/v1/ip/geo.json', country: 'country' },
 ];
-const REFRESH_MS = 30 * 60_000;
+const REFRESH_MS = 15 * 60_000;
+// Forecast models report light drizzle far more often than it actually
+// falls, so below this much rain in the current 15 minutes it's just cloudy.
+const MIN_RAIN_MM = 0.5;
 const TIMEOUT_MS = 10_000;
 
 // WMO weather codes → the handful of looks the buddy can show.
-function kindOf(code) {
+function kindOf(code, precipitation) {
+  const wet = (code >= 51 && code <= 67) || (code >= 80 && code <= 82);
+  if (wet && precipitation != null && precipitation < MIN_RAIN_MM) return 'cloudy';
+  if (code >= 51 && code <= 57 && precipitation == null) return 'cloudy'; // drizzle
   if (code === 0 || code === 1) return 'clear';
   if (code === 2 || code === 3) return 'cloudy';
   if (code === 45 || code === 48) return 'fog';
@@ -89,10 +95,10 @@ function createWeather({ settings, log, onUpdate = () => {}, fetchImpl = fetch }
     try {
       const q = new URLSearchParams({
         latitude: String(w.location.lat), longitude: String(w.location.lon),
-        current: 'temperature_2m,weather_code,is_day', temperature_unit: w.unit === 'F' ? 'fahrenheit' : 'celsius',
+        current: 'temperature_2m,weather_code,is_day,precipitation', temperature_unit: w.unit === 'F' ? 'fahrenheit' : 'celsius',
       });
       const c = (await getJson(`${FORECAST_URL}?${q}`)).current;
-      const kind = kindOf(c.weather_code);
+      const kind = kindOf(c.weather_code, typeof c.precipitation === 'number' ? c.precipitation : null);
       current = {
         kind, day: c.is_day === 1, temp: Math.round(c.temperature_2m), unit: w.unit === 'F' ? 'F' : 'C',
         description: DESCRIBE[kind], emoji: EMOJI[kind], place: w.location.name, at: new Date().toISOString(),

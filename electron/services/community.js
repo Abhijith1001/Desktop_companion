@@ -76,10 +76,12 @@ function createCommunity({ settings, log, appVersion, fetchImpl = globalThis.fet
     sendFeedback,
     reportCrash,
     announcements: visibleAnnouncements,
+    refresh: refreshAnnouncements,
     dismiss,
     start() {
+      refreshAnnouncements();
       setTimeout(refreshAnnouncements, 15_000);
-      timer = setInterval(refreshAnnouncements, ANNOUNCE_EVERY_MS);
+      timer = setInterval(refreshAnnouncements, 15 * 60_000);
     },
     stop() { clearInterval(timer); },
   };

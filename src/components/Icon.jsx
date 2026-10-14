@@ -8,6 +8,7 @@ const PATHS = {
   list: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></>,
   flame: <path d="M12 22c4 0 7-2.7 7-6.8 0-4.4-3.6-6.6-4.5-10.2-2.3 1.4-3.6 3.7-3.4 6.2-1.3-.7-2.2-2-2.4-3.4C6.5 9.6 5 12.2 5 15.2 5 19.3 8 22 12 22Z" />,
   timer: <><circle cx="12" cy="14" r="8" /><path d="M10 2h4M12 14l3-3" /></>,
+  phone: <><rect x="6" y="2" width="12" height="20" rx="2.5" /><path d="M11 18h2" /></>,
   message: <path d="M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />,
   bookmark: <path d="M18 21 12 17 6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2Z" />,
   note: <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z" /><path d="M14 3v6h6M8 13h8M8 17h5" /></>,

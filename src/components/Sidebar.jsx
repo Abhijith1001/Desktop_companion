@@ -35,6 +35,7 @@ const NAV = [
   { to: '/pomodoro', label: 'Focus mode', icon: 'timer' },
   { group: 'Tools' },
   { to: '/chat', label: 'Chat', icon: 'message' },
+  { to: '/phone', label: 'Phone', icon: 'phone' },
   { to: '/bookmarks', label: 'Bookmarks', icon: 'bookmark', count: 'bookmarks' },
   { to: '/notepad', label: 'Notepad', icon: 'note' },
   { to: '/calculator', label: 'Calculator', icon: 'calculator' },
@@ -119,8 +120,8 @@ export default function Sidebar({ path, open = false, onClose = () => {} }) {
             )))}
         </ul>
 
-        <div className="mt-auto pt-3 md:max-lg:hidden">
-          <WellnessWidget />
+        <div className="mt-auto pt-2">
+          <WellnessWidget labelClass={LABEL} />
         </div>
 
         <button type="button" title="Send feedback" onClick={() => setFeedback(true)}

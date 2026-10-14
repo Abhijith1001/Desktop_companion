@@ -62,6 +62,9 @@ const settingsPatch = z.object({
   updates: z.object({ mode: z.enum(['auto', 'ask']) }),
   followCursor: z.boolean(),
   perchOnWindows: z.boolean(),
+  phoneAlerts: z.boolean(),
+  phoneAlertsAll: z.boolean(),
+  phoneLink: z.object({ enabled: z.boolean(), address: z.string().regex(/^[\w.-]{1,253}:\d{1,5}$/).nullable() }),
   weather: z.object({
     enabled: z.boolean(),
     unit: z.enum(['C', 'F']),

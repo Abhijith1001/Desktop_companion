@@ -37,6 +37,9 @@ const DEFAULTS = {
   crashReports: false,           // opt-in: send anonymous crash reports to the sync server            // buddy holds a little sign with tasks left today
   followCursor: true,            // watch and sometimes chase the mouse cursor
   perchOnWindows: true,          // sometimes jump up and sit on top of the active window
+  phoneAlerts: true,             // buddy says who messaged you on a connected phone (sender only)
+  phoneLink: { enabled: false, address: null }, // keep a phone connected for notifications (address = last Wi-Fi IP:port)
+  phoneAlertsAll: false,         // ...for every app's notifications, not just chat apps
   // Local weather (Open-Meteo). location: { name, lat, lon, country } or null.
   weather: { enabled: true, location: null, unit: 'C' },
   accessory: null,               // unlocked accessory id (see services/progress.js)

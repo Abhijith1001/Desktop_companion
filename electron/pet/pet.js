@@ -18,6 +18,7 @@
   let decor = { season: null, weather: null };
   let look = null;          // { dx, dy, inside } cursor offset from the head, CSS px
   let charPayload = { id: 'dog', accessory: null };
+  let hot = false;          // the computer is struggling: angry, red and on fire
 
   // ---------- drawing
   function render() {
@@ -26,8 +27,9 @@
       options.animation === 'reduced' ? 'reduced' : '', options.animation === 'off' ? 'still' : '',
       options.paused ? 'paused' : '', mannerism ? `m-${mannerism}` : '',
       `mood-${mood.level}`, mood.hungry ? 'hungry' : '', hovering && !dragging ? 'hovered' : '',
-      look?.inside ? 'curious' : '', decor.season ? `season-${decor.season}` : ''].filter(Boolean).join(' ');
+      look?.inside ? 'curious' : '', decor.season ? `season-${decor.season}` : '', hot && !options.paused ? 'overheat' : ''].filter(Boolean).join(' ');
     applyLook();
+    renderHeat();
     renderSign();
   }
 
@@ -236,6 +238,11 @@
     if (!hovering || alert || dragging) return;
     const parts = [el('div', 'label', hint.label), el('div', 'title', hint.title)];
     if (hint.stats) parts.push(el('div', 'stats', hint.stats));
+    if (hint.system) parts.push(el('div', 'stats system', hint.system));
+    if (hint.hot) parts.push(el('div', 'stats hot', `🔥 I'm burning up! ${hint.reasons.join(', ')}`));
+    // Was a native tooltip, which Windows draws under the cursor near the screen
+    // edge: it stole the hover and made the buddy flicker endlessly.
+    parts.push(el('div', 'stats tip', 'Double-click for tasks · drag to move · right-click for menu'));
     showBubble(parts, { simple: true });
   }
   function hideHint() { if (!alert && !sayTimer) hideBubble(); }
@@ -534,6 +541,98 @@
     decor = { season: null, weather: null, ...d };
     if (seasonChanged) setCharacter(charPayload); else render();
     renderWeather();
+  });
+
+  // ---------- overheating: smoke from nose, mouth and ears, flames all around
+  // The overlay sits beside #buddy (whose SVG is rebuilt on character change)
+  // and the puffs are re-anchored to the head while it bobs.
+  const heat = document.createElement('div');
+  heat.id = 'heat';
+  heat.setAttribute('aria-hidden', 'true');
+  document.body.insertBefore(heat, buddy.nextSibling);
+  // Fire is built from rising teardrop tongues: each one starts as a bright
+  // yellow core at the base, swells, turns orange then red and fades as it
+  // climbs, so the flames keep licking upward instead of just pulsing.
+  const flames = document.createElement('div');
+  flames.className = 'flames';
+  const glow = document.createElement('b');
+  glow.className = 'glow';
+  flames.append(glow);
+  const TONGUES = 34;
+  for (let i = 0; i < TONGUES; i++) {
+    const f = document.createElement('i');
+    // Spread along the base, taller in the middle, shorter at the edges.
+    const x = 6 + Math.random() * 88;
+    const edge = 1 - Math.abs(x - 50) / 50;
+    f.style.left = `${x.toFixed(1)}%`;
+    f.style.setProperty('--rise', `${Math.round(-(45 + edge * 95 + Math.random() * 25))}px`);
+    f.style.setProperty('--drift', `${Math.round((Math.random() - 0.5) * 18)}px`);
+    f.style.setProperty('--size', `${Math.round(14 + edge * 14 + Math.random() * 8)}px`);
+    const dur = 0.7 + Math.random() * 0.5;
+    f.style.animationDuration = `${dur.toFixed(2)}s`;
+    f.style.animationDelay = `${(-Math.random() * dur).toFixed(2)}s`;
+    flames.append(f);
+  }
+  const embers = document.createElement('div');
+  embers.className = 'embers';
+  for (let i = 0; i < 10; i++) {
+    const e = document.createElement('i');
+    e.style.left = `${10 + Math.random() * 80}%`;
+    e.style.setProperty('--drift', `${Math.round((Math.random() - 0.5) * 50)}px`);
+    const dur = 1.4 + Math.random() * 1.2;
+    e.style.animationDuration = `${dur.toFixed(2)}s`;
+    e.style.animationDelay = `${(-Math.random() * dur).toFixed(2)}s`;
+    embers.append(e);
+  }
+  const puffs = ['nose', 'mouth', 'ear1', 'ear2'].map((spot) => {
+    const s = document.createElement('div');
+    s.className = `smoke s-${spot}`;
+    for (let i = 0; i < 3; i++) {
+      const p = document.createElement('i');
+      p.style.animationDelay = `${(i * 0.4).toFixed(1)}s`;
+      s.append(p);
+    }
+    return s;
+  });
+  heat.append(...puffs);
+  // Flames go behind the buddy, smoke in front.
+  const fire = document.createElement('div');
+  fire.id = 'fire';
+  fire.setAttribute('aria-hidden', 'true');
+  fire.append(flames, embers);
+  document.body.insertBefore(fire, buddy);
+  let heatTimer = null;
+  function placeHeat() {
+    const b = buddy.getBoundingClientRect();
+    const box = { left: `${b.left - 20}px`, top: `${b.top - 30}px`, width: `${b.width + 40}px`, height: `${b.height + 40}px` };
+    Object.assign(heat.style, box);
+    Object.assign(fire.style, box);
+    const head = buddy.querySelector('#head');
+    if (!head) return;
+    const h = head.getBoundingClientRect();
+    const front = dir < 0 ? h.left : h.right;
+    const spots = [
+      [front, h.top + h.height * 0.5],
+      [front - dir * h.width * 0.12, h.top + h.height * 0.8],
+      [h.left + h.width * 0.28, h.top + 2],
+      [h.left + h.width * 0.72, h.top + 2],
+    ];
+    spots.forEach(([x, y], i) => { puffs[i].style.left = `${x - b.left + 20}px`; puffs[i].style.top = `${y - b.top + 30}px`; });
+  }
+  function renderHeat() {
+    const on = hot && !options.paused && options.animation !== 'off';
+    heat.classList.toggle('on', on);
+    fire.classList.toggle('on', on);
+    heat.classList.toggle('left', dir < 0);
+    if (on && !heatTimer) { placeHeat(); heatTimer = setInterval(placeHeat, 150); }
+    if (!on && heatTimer) { clearInterval(heatTimer); heatTimer = null; }
+  }
+  api.on('pet:system', (s) => {
+    const wasHot = hot;
+    hot = !!s?.hot;
+    if (hot === wasHot) return;
+    render();
+    if (hot) angrySound();
   });
 
   const motion = matchMedia('(prefers-reduced-motion: reduce)');

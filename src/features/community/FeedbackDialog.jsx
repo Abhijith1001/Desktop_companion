@@ -4,10 +4,10 @@ import { useToasts } from '../../stores';
 import { api } from '../../services/api';
 
 const KINDS = [
-  { id: 'idea', label: '💡 Idea' },
-  { id: 'bug', label: '🐞 Problem' },
-  { id: 'love', label: '❤️ Love it' },
-  { id: 'other', label: '💬 Other' },
+  { id: 'idea', icon: '💡', label: 'Idea' },
+  { id: 'bug', icon: '🐞', label: 'Problem' },
+  { id: 'love', icon: '❤️', label: 'Love it' },
+  { id: 'other', icon: '💬', label: 'Other' },
 ];
 
 export default function FeedbackDialog({ onClose }) {
@@ -34,11 +34,16 @@ export default function FeedbackDialog({ onClose }) {
   return (
     <Modal title="Send feedback" onClose={onClose}>
       <form className="flex flex-col gap-4" onSubmit={send}>
-        <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Type of feedback">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Type of feedback">
           {KINDS.map((k) => (
             <button key={k.id} type="button" role="radio" aria-checked={kind === k.id} onClick={() => setKind(k.id)}
-              className={`rounded-xl border-2 px-2 py-2 text-sm font-medium transition-colors ${kind === k.id ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20' : 'border-stone-200 hover:border-stone-300 dark:border-stone-700'}`}>
-              {k.label}
+              className={`flex items-center justify-center gap-1.5 rounded-xl border-2 px-2.5 py-2.5 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                kind === k.id
+                  ? 'border-brand-500 bg-brand-50 text-brand-900 shadow-sm dark:bg-brand-900/30 dark:text-brand-200'
+                  : 'border-stone-200 bg-stone-50/50 hover:border-stone-300 dark:border-stone-700 dark:bg-stone-800/40 text-stone-700 dark:text-stone-300'
+              }`}>
+              <span className="text-base">{k.icon}</span>
+              <span>{k.label}</span>
             </button>
           ))}
         </div>
