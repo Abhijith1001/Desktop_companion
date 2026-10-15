@@ -262,7 +262,10 @@ window.CHARACTERS = {
   kurta: {
     name: 'Kurta Guy',
     upright: true,
-    sprite: { idle: 'idle.webp', walk: 'walk.webp', happy: 'happy.webp', warn: 'warn.webp', angry: 'angry.webp' },
+    sprite: {
+      idle: 'idle.webp', walk: 'walk.webp', held: 'held.webp', fall: 'fall.webp', land: 'land.webp',
+      happy: 'happy.webp', warn: 'warn.webp', angry: 'angry.webp',
+    },
   },
 };
 

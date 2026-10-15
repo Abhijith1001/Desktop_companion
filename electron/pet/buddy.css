@@ -466,5 +466,3 @@
 .buddy.sprite .jump { transform-box: view-box; transform-origin: 80px 0; transition: transform .25s ease-out; }
 /* Held by the scruff: hangs from the cursor and swings with the drag. */
 .buddy.sprite.drag .jump, .buddy.sprite.drag.fast-drag .jump { transform: rotate(calc(var(--drag-tilt, 0deg) * .6)); }
-/* Falling: slight lean, no wobble. */
-.buddy.sprite.falling .jump { transform: rotate(4deg); transition-duration: .4s; }

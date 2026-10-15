@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const POSES = ['idle', 'walk', 'happy', 'warn', 'angry'];
+const POSES = ['idle', 'walk', 'held', 'fall', 'land', 'happy', 'warn', 'angry'];
 const VIDEO = ['.mp4', '.mov', '.webm', '.mkv', '.gif'];
 const IMAGE = ['.png', '.jpg', '.jpeg', '.webp'];
 
@@ -66,7 +66,7 @@ for (const pose of POSES) {
     'format=yuva420p',
   ].filter(Boolean).join(',');
   // Clips loop forever except the one-shot reactions, which hold their last frame.
-  const loop = pose === 'idle' || pose === 'walk' ? '0' : '1';
+  const loop = ['idle', 'walk', 'held', 'fall'].includes(pose) ? '0' : '1';
   const r = spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', src, '-vf', filter, '-an',
     '-c:v', 'libwebp_anim', '-lossless', '0', '-quality', '80', '-loop', isVideo ? loop : '0', dest],
   { stdio: 'inherit' });

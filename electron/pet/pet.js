@@ -53,11 +53,19 @@
     if (css === 'idle' && (mood.level === 'sulky' || mood.overdue)) return 'warn';
     return 'idle';
   }
+  // One-shot clips (reactions) get a fresh URL each time so they replay from
+  // the start; Chromium otherwise resumes a cached animation where it ended.
+  const LOOPING = ['idle', 'walk', 'held', 'fall'];
+  let spriteShown = '';
   function renderSprite() {
     const img = buddy.querySelector('image.sprite');
     if (!img) return;
-    const url = window.spriteUrl(character, spritePose());
-    if (img.getAttribute('href') !== url) img.setAttribute('href', url);
+    const pose = spritePose();
+    const key = `${character}/${pose}`;
+    if (key === spriteShown) return;
+    spriteShown = key;
+    const url = window.spriteUrl(character, pose);
+    img.setAttribute('href', LOOPING.includes(pose) ? url : `${url}?t=${Date.now()}`);
   }
 
   // ---------- "N left today" sign, shown while the buddy is standing still
@@ -108,6 +116,7 @@
     // December: a Santa hat, unless an unlocked accessory is being worn.
     const wear = accessory || (decor.season === 'christmas' ? 'santa' : null);
     buddy.innerHTML = window.buddyMarkup(character, wear);
+    spriteShown = '';
     setupLook();
     render();
   }
