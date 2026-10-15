@@ -1,6 +1,24 @@
-# Render Blueprint for the Desktop Buddy sync server.
+# Render Blueprint for the Desktop Buddy sync server and landing page.
 # Render dashboard -> New -> Blueprint -> pick this repo.
 services:
+  # Landing page (site/) at https://desktop-buddy.onrender.com. Assembled the
+  # same way as .github/workflows/pages.yml: the buddy art comes from the app.
+  - type: web
+    name: desktop-buddy
+    runtime: static
+    buildCommand: >-
+      rm -rf _site && mkdir -p _site/buddy &&
+      cp -r site/. _site/ &&
+      cp electron/pet/characters.js electron/pet/buddy.css _site/buddy/ &&
+      cp build/icon.png _site/favicon.png
+    staticPublishPath: _site
+    buildFilter:
+      paths: ['site/**', 'electron/pet/characters.js', 'electron/pet/buddy.css', 'build/icon.png']
+    headers:
+      - path: /cat/*
+        name: Cache-Control
+        value: public, max-age=604800
+
   - type: web
     name: desktop-buddy-server
     runtime: node

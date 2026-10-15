@@ -7,6 +7,8 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   root: 'src',
   base: './',
+  // Sprite character poses, shared with the pet window (electron/pet/public).
+  publicDir: '../electron/pet/public',
   plugins: [react(), tailwindcss()],
   build: { outDir: '../dist', emptyOutDir: true, target: 'chrome130' },
   server: { port: 5173, strictPort: true },

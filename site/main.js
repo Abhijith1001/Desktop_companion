@@ -98,7 +98,7 @@
     .then((rel) => {
       const exe = rel?.assets?.find((a) => a.name.endsWith('.exe'));
       if (!exe) return;
-      for (const id of ['download-btn', 'download-btn-2']) document.getElementById(id).href = exe.browser_download_url;
+      for (const id of ['download-btn-0', 'download-btn', 'download-btn-2']) document.getElementById(id).href = exe.browser_download_url;
       const mb = Math.round(exe.size / 1_048_576);
       document.getElementById('download-note').textContent = `Version ${rel.tag_name.replace(/^v/, '')} · ${mb} MB · free · works offline`;
     })

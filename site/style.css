@@ -121,3 +121,33 @@ footer { display: flex; justify-content: center; gap: 22px; flex-wrap: wrap; pad
   html { scroll-behavior: auto; }
   .btn, .card, .bubble { transition: none; }
 }
+
+/* cursor-tracking cat intro */
+.cat-hero { position: relative; max-width: none; height: 100vh; height: 100svh; min-height: 520px; padding: 0; overflow: hidden; color: #fff;
+  background: radial-gradient(ellipse at 60% 55%, #e4170d 0%, #d81109 35%, #c90d07 75%, #b40b06 100%); }
+.cat-stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cat-nav { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); z-index: 2; display: flex; gap: 4px; padding: 6px;
+  background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .35); border-radius: 999px;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.cat-nav a { color: #fff; text-decoration: none; font-size: 12px; font-weight: 600; letter-spacing: .16em; padding: 9px 16px; border-radius: 999px; transition: background .25s; }
+.cat-nav a:hover { background: rgba(255, 255, 255, .18); }
+.cat-copy { position: absolute; z-index: 2; left: clamp(16px, 6vw, 96px); bottom: clamp(28px, 9vh, 96px); max-width: 420px; }
+.cat-hi { margin: 0; font-size: 13px; letter-spacing: .45em; text-transform: uppercase; opacity: .9; }
+.cat-name { font-family: "Dancing Script", cursive; font-weight: 700; font-size: clamp(56px, 8vw, 116px); line-height: 1; margin: 6px 0 16px -3px;
+  text-shadow: 0 8px 30px rgba(80, 0, 0, .35); letter-spacing: 0; }
+.cat-bio { max-width: 340px; margin: 0; font-size: 15px; line-height: 1.6; opacity: .92; }
+.cat-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.cat-btn { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; border-radius: 999px; font-size: 15px; font-weight: 600; text-decoration: none; transition: transform .25s, background .25s; }
+.cat-btn:hover { transform: translateY(-2px); }
+.cat-btn.solid { background: #fff; color: #a91e18; box-shadow: 0 10px 25px rgba(0, 0, 0, .18); }
+.cat-btn.solid svg { transition: transform .25s; } .cat-btn.solid:hover svg { transform: translateX(3px); }
+.cat-btn.glass { color: #fff; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .7); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.cat-btn.glass:hover { background: rgba(255, 255, 255, .22); }
+.cat-cursor-dot, .cat-cursor-ring { position: absolute; top: 0; left: 0; z-index: 3; pointer-events: none; border-radius: 50%; opacity: 0; transition: opacity .2s; }
+.cat-hero.cursor-on { cursor: none; } .cat-hero.cursor-on a { cursor: none; }
+.cat-hero.cursor-on .cat-cursor-dot, .cat-hero.cursor-on .cat-cursor-ring { opacity: 1; }
+.cat-cursor-dot { width: 8px; height: 8px; margin: -4px 0 0 -4px; background: #fff; box-shadow: 0 0 12px 3px rgba(255, 255, 255, .8); }
+.cat-cursor-ring { width: 40px; height: 40px; margin: -20px 0 0 -20px; border: 1.5px solid rgba(255, 255, 255, .7);
+  background: radial-gradient(circle, rgba(255, 255, 255, .12), transparent 70%); transition: opacity .2s, width .3s, height .3s, margin .3s, background .3s; }
+.cat-cursor-ring.hover { width: 72px; height: 72px; margin: -36px 0 0 -36px; background: rgba(255, 255, 255, .15); }
+@media (max-width: 700px) { .cat-nav a { padding: 8px 10px; letter-spacing: .08em; } .cat-bio { font-size: 14px; } }

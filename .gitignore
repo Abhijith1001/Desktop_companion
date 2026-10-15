@@ -6,3 +6,6 @@ server/.env
 *.log
 site/buddy/
 vendor/
+
+# landing page build output (Render static site)
+_site/

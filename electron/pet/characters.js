@@ -255,7 +255,32 @@ window.CHARACTERS = {
         <g id="tongue"></g>
       </g>`,
   },
+
+  // Sprite character: poses are images made with AI tools (see
+  // scripts/import-sprite.js), not hand-drawn SVG. Replace the placeholder
+  // files in electron/pet/public/sprites/bro/ with your own.
+  bro: {
+    name: 'Bro (sprite)',
+    upright: true,
+    sprite: { idle: 'idle.svg', walk: 'walk.svg', happy: 'happy.svg', warn: 'warn.svg', angry: 'angry.svg' },
+  },
 };
+
+// Sprite poses live in electron/pet/public/, which Vite also serves as the
+// task manager's public dir, so the relative path differs per window.
+const SPRITE_BASE = typeof location !== 'undefined' && location.pathname.includes('/electron/pet/')
+  ? 'public/sprites/' : 'sprites/';
+window.spriteUrl = (id, pose) => {
+  const sp = window.CHARACTERS[id]?.sprite;
+  if (!sp) return null;
+  return `${SPRITE_BASE}${id}/${sp[pose] || sp.idle}`;
+};
+// Feet at y=116 like the SVG characters; the image is scaled to fit by height.
+for (const [id, c] of Object.entries(window.CHARACTERS)) {
+  if (c.sprite && !c.svg) {
+    c.svg = `<g id="head"><image class="sprite" href="${window.spriteUrl(id, 'idle')}" x="0" y="-14" width="160" height="130" preserveAspectRatio="xMidYMax meet"/></g>`;
+  }
+}
 
 // Unlockable accessories (see electron/services/progress.js). Drawn with the
 // point where they rest on the head at 0,0 and placed via HAT_ANCHORS.
@@ -271,9 +296,9 @@ window.ACCESSORIES = {
   santa: '<path d="M-16 -2 Q-8 -30 10 -26 Q20 -22 24 -8 L14 -4 Z" fill="#d62828"/><circle cx="24" cy="-7" r="5" fill="#fff"/><rect x="-19" y="-6" width="38" height="9" rx="4.5" fill="#fff"/>',
 };
 // Top of each character's head: [x, y, scale].
-const HAT_ANCHORS = { dog: [118, 22, 0.9], tom: [70, 28, 0.8], cat: [119, 17, 1], hero: [80, 11, 0.8], ranger: [80, 11, 0.8] };
+const HAT_ANCHORS = { dog: [118, 22, 0.9], tom: [70, 28, 0.8], cat: [119, 17, 1], hero: [80, 11, 0.8], ranger: [80, 11, 0.8], bro: [80, 0, 0.8] };
 // Where a treat goes when the buddy eats: [x, y].
-const MOUTH_ANCHORS = { dog: [150, 64], tom: [86, 64], cat: [126, 70], hero: [92, 40], ranger: [92, 40] };
+const MOUTH_ANCHORS = { dog: [150, 64], tom: [86, 64], cat: [126, 70], hero: [92, 40], ranger: [92, 40], bro: [92, 30] };
 
 // Full SVG for a character, wrapped in the groups buddy.css animates. The
 // accessory goes inside the head group (always last) so it bobs with the head.

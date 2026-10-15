@@ -11,8 +11,33 @@
   <link rel="icon" href="favicon.png">
   <link rel="stylesheet" href="buddy/buddy.css">
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap">
 </head>
 <body>
+  <section class="cat-hero" id="cat-hero" aria-label="Desktop Buddy">
+    <canvas class="cat-stage" aria-hidden="true"></canvas>
+    <nav class="cat-nav">
+      <a href="#features">[FEATURES]</a>
+      <a href="#faq">[FAQ]</a>
+      <a href="#download">[DOWNLOAD]</a>
+    </nav>
+    <div class="cat-copy">
+      <p class="cat-hi">Hi, I'm</p>
+      <h1 class="cat-name">your Buddy</h1>
+      <p class="cat-bio">A little pet that lives on your Windows taskbar, keeps your to-do list and runs over when something is due. Go on, move your mouse.</p>
+      <div class="cat-actions">
+        <a class="cat-btn solid" id="download-btn-0" href="https://github.com/Abhijith1001/Desktop_companion/releases/latest">Download
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="cat-btn glass" href="#features">See what I do</a>
+      </div>
+    </div>
+    <div class="cat-cursor-ring" aria-hidden="true"></div>
+    <div class="cat-cursor-dot" aria-hidden="true"></div>
+  </section>
+
   <header class="nav">
     <a class="brand" href="#"><span aria-hidden="true">🐾</span> Desktop Buddy</a>
     <nav>
@@ -97,5 +122,6 @@
 
   <script src="buddy/characters.js"></script>
   <script src="main.js"></script>
+  <script src="cat-hero.js"></script>
 </body>
 </html>

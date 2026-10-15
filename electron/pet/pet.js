@@ -29,8 +29,31 @@
       `mood-${mood.level}`, mood.hungry ? 'hungry' : '', hovering && !dragging ? 'hovered' : '',
       look?.inside ? 'curious' : '', decor.season ? `season-${decor.season}` : '', hot && !options.paused ? 'overheat' : ''].filter(Boolean).join(' ');
     applyLook();
+    renderSprite();
     renderHeat();
     renderSign();
+  }
+
+  // ---------- sprite characters: swap the pose image to match state and mood
+  const POSES = {
+    walk: ['walk', 'run', 'drag', 'falling'],
+    angry: ['angry', 'impact'],
+    happy: ['happy', 'love', 'eat', 'wave'],
+    warn: ['alert', 'dizzy', 'recovering'],
+  };
+  function spritePose() {
+    if (hot && !options.paused) return 'angry';
+    if (buddy.classList.contains('hearts')) return 'happy';
+    for (const [pose, states] of Object.entries(POSES)) if (states.includes(css)) return pose;
+    if (css === 'idle' && mood.level === 'happy') return 'happy';
+    if (css === 'idle' && (mood.level === 'sulky' || mood.overdue)) return 'warn';
+    return 'idle';
+  }
+  function renderSprite() {
+    const img = buddy.querySelector('image.sprite');
+    if (!img) return;
+    const url = window.spriteUrl(character, spritePose());
+    if (img.getAttribute('href') !== url) img.setAttribute('href', url);
   }
 
   // ---------- "N left today" sign, shown while the buddy is standing still
@@ -458,8 +481,9 @@
   let heartsTimer = null;
   api.on('pet:hearts', () => {
     buddy.classList.add('hearts');
+    renderSprite();
     clearTimeout(heartsTimer);
-    heartsTimer = setTimeout(() => buddy.classList.remove('hearts'), 1800);
+    heartsTimer = setTimeout(() => { buddy.classList.remove('hearts'); renderSprite(); }, 1800);
   });
   api.on('pet:purr', () => tones([[110, 0, 0.25, 'sine'], [123, 0.22, 0.3, 'sine'], [988, 0.05, 0.12, 'triangle']], 0.25));
   api.on('pet:eat', () => tones([[300, 0.55, 0.06, 'square'], [260, 0.85, 0.06, 'square'], [300, 1.15, 0.06, 'square'], [660, 1.6, 0.18, 'sine']], 0.12));
