@@ -3,11 +3,77 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Desktop Buddy</title>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-G3E7BTB9S4"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-G3E7BTB9S4');
+  </script>
+  <meta name="google-site-verification" content="GuXWEIATg604PWvBC_C9-N_7l14ROLs8BDjZ0hY_CBA">
+  <title>Desktop Buddy – Free Animated Desktop Pet &amp; Reminder App for Windows</title>
   <meta name="description" content="A cute animated pet that lives on your Windows taskbar, keeps your to-do list and runs over to remind you when something is due. Free, works offline.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="author" content="Devwerks">
+  <link rel="canonical" href="https://desktop-buddy.onrender.com/">
+  <meta property="og:site_name" content="Desktop Buddy">
   <meta property="og:title" content="Desktop Buddy: a pet that reminds you">
   <meta property="og:description" content="A cute animated pet on your taskbar that keeps your tasks and reminds you on time. Free for Windows.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://desktop-buddy.onrender.com/">
+  <meta property="og:image" content="https://desktop-buddy.onrender.com/favicon.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Desktop Buddy: a pet that reminds you">
+  <meta name="twitter:description" content="A cute animated pet on your Windows taskbar that keeps your tasks and reminds you on time.">
+  <meta name="twitter:image" content="https://desktop-buddy.onrender.com/favicon.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://desktop-buddy.onrender.com/#org",
+        "name": "Devwerks",
+        "url": "https://desktop-buddy.onrender.com/",
+        "logo": "https://desktop-buddy.onrender.com/favicon.png",
+        "sameAs": ["https://github.com/Abhijith1001/Desktop_companion"]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://desktop-buddy.onrender.com/#website",
+        "url": "https://desktop-buddy.onrender.com/",
+        "name": "Desktop Buddy",
+        "publisher": { "@id": "https://desktop-buddy.onrender.com/#org" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "Desktop Buddy",
+        "description": "Desktop Buddy is a free animated desktop pet for Windows 10 and 11 that walks along your taskbar, keeps your to-do list and reminds you when tasks are due. It includes repeating tasks, streaks, a Pomodoro timer, a habit tracker and wellness breaks, and works offline.",
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "Windows 10, Windows 11",
+        "softwareVersion": "2.3.1",
+        "url": "https://desktop-buddy.onrender.com/",
+        "downloadUrl": "https://github.com/Abhijith1001/Desktop_companion/releases/latest",
+        "image": "https://desktop-buddy.onrender.com/favicon.png",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "publisher": { "@id": "https://desktop-buddy.onrender.com/#org" },
+        "featureList": ["Five animated characters", "Task reminders with Done and Snooze", "Repeating tasks with time zone support", "Streaks and unlockable outfits", "Pomodoro timer and habit tracker", "Water and stretch break reminders", "Local-first storage with optional cloud sync"]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Is Desktop Buddy really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Desktop Buddy is free with no ads and no account required." } },
+          { "@type": "Question", "name": "Windows says \"Windows protected your PC\". Is Desktop Buddy safe?", "acceptedAnswer": { "@type": "Answer", "text": "That message appears for new apps that haven't built up a download reputation yet. Click More info, then Run anyway. You can also install it from the Microsoft Store or with winget install Devwerks.DesktopBuddy." } },
+          { "@type": "Question", "name": "Will Desktop Buddy slow down my computer?", "acceptedAnswer": { "@type": "Answer", "text": "No. The buddy is a small transparent window that animates with CSS, and it pauses itself when you hide it or the PC is idle." } },
+          { "@type": "Question", "name": "Does Desktop Buddy work without internet?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Tasks, reminders and the buddy all work offline. Internet is only used for optional sync, weather and updates." } },
+          { "@type": "Question", "name": "What happens to my data in Desktop Buddy?", "acceptedAnswer": { "@type": "Answer", "text": "It stays in a database on your computer. Cloud sync between computers is optional and only covers tasks." } },
+          { "@type": "Question", "name": "How do I hide the buddy for a while?", "acceptedAnswer": { "@type": "Answer", "text": "Press Ctrl+Alt+B. Reminders keep working while it's hidden." } }
+        ]
+      }
+    ]
+  }
+  </script>
   <link rel="icon" href="favicon.png">
   <link rel="stylesheet" href="buddy/buddy.css">
   <link rel="stylesheet" href="style.css">
@@ -25,7 +91,7 @@
     </nav>
     <div class="cat-copy">
       <p class="cat-hi">Hi, I'm</p>
-      <h1 class="cat-name">your Buddy</h1>
+      <p class="cat-name">your Buddy</p>
       <p class="cat-bio">A little pet that lives on your Windows taskbar, keeps your to-do list and runs over when something is due. Go on, move your mouse.</p>
       <div class="cat-actions">
         <a class="cat-btn solid" id="download-btn-0" href="https://github.com/Abhijith1001/Desktop_companion/releases/latest">Download
@@ -74,6 +140,11 @@
         </div>
         <div class="picker" role="radiogroup" aria-label="Pick a character" id="picker"></div>
       </div>
+    </section>
+
+    <section class="steps" id="about">
+      <h2>What is Desktop Buddy?</h2>
+      <p>Desktop Buddy is a free desktop pet and reminder app for Windows 10 and 11, made by Devwerks. An animated character lives on your taskbar, holds your to-do list and walks to the middle of your screen when a task is due. It supports repeating tasks, streaks, a Pomodoro timer, a habit tracker and wellness breaks. Your data stays on your PC, it works offline, and it installs with <code>winget install Devwerks.DesktopBuddy</code>.</p>
     </section>
 
     <section class="features" id="features">

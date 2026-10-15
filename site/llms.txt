@@ -1,0 +1,16 @@
+# Desktop Buddy
+
+> Desktop Buddy is a free animated desktop pet and reminder app for Windows 10 and 11, made by Devwerks. A character lives on your taskbar, keeps your to-do list and walks to the centre of your screen when a task is due.
+
+## Key facts
+- Price: free, no ads, no account required
+- Platforms: Windows 10 and 11
+- Install: https://github.com/Abhijith1001/Desktop_companion/releases/latest or `winget install Devwerks.DesktopBuddy`
+- Works offline; data stays on your PC; cloud sync is optional and covers tasks only
+- Features: five characters, reminders with Done/Snooze, repeating tasks, streaks and outfits, Pomodoro timer, habit tracker, water and stretch breaks
+- Hide or show the buddy: Ctrl+Alt+B
+
+## Links
+- [Home](https://desktop-buddy.onrender.com/)
+- [Privacy policy](https://desktop-buddy.onrender.com/privacy.html)
+- [Source and issues](https://github.com/Abhijith1001/Desktop_companion)
