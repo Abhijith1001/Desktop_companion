@@ -2,6 +2,8 @@
 
 An animated desktop companion for Windows. It walks along your taskbar, keeps your task list, and runs to the middle of the screen when something is due. Tasks and reminders live in a local SQLite database, so everything works offline. Optional cloud sync (Express + MongoDB Atlas) keeps several computers in step.
 
+**🌐 Website:** [desktop-buddy.onrender.com](https://desktop-buddy.onrender.com/)
+
 - **Characters:** a dog, a gray cartoon cat, a Tom-style cat, a hero kid and a ranger. Each has its own animations and dialogue.
 - **Task manager:** Today, Upcoming, Overdue, Completed and All views, plus search, filters and a calendar.
 - **Recurring tasks:** daily, weekly, selected weekdays, every N days or every N weeks, with an optional end date. Times follow the task's IANA time zone, so daylight-saving changes don't shift them.
