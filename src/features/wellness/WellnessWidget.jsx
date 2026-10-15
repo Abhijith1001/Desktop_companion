@@ -6,7 +6,7 @@ import { Modal } from '../../components/ui';
 const WELLNESS_PRESETS = [
   { id: 'water',     icon: '💧', label: 'Drink water',           description: 'Stay hydrated! Keep a glass nearby.',                     color: '#3b82f6', interval: 60 },
   { id: 'posture',   icon: '🪑', label: 'Check posture',         description: 'Sit up straight, relax your shoulders and unclench jaw.', color: '#8b5cf6', interval: 45 },
-  { id: 'eye-break', icon: '👁️', label: 'Eye break (20-20-20)', description: 'Look 20 feet away for 20 seconds to rest your eyes.',   color: '#10b981', interval: 20 },
+  { id: 'eye-break', icon: '👁️', label: 'Eye break (20-20-20)', description: 'Look 20 feet away for 20 seconds to rest your eyes.',   color: '#10b981', interval: 20, breakSec: 20 },
   { id: 'stand-up',  icon: '🚶', label: 'Stand up',              description: 'Get up, stretch your legs, and move for a minute.',      color: '#f59e0b', interval: 90 },
 ];
 
@@ -34,6 +34,8 @@ export default function WellnessWidget({ labelClass = '' }) {
   const [open, setOpen] = useState(false);
   // { [presetId]: { nextAt, intervalMin } }, saved so reminders survive reloads.
   const [active, setActive] = useState(loadActive);
+  // Running break countdown popup: { preset, endsAt } or null.
+  const [breakPopup, setBreakPopup] = useState(null);
   const toast = useToasts((s) => s.push);
   const toastRef = useRef(toast);
   toastRef.current = toast;
@@ -62,7 +64,9 @@ export default function WellnessWidget({ labelClass = '' }) {
       if (!due.length) return;
       for (const [id] of due) {
         const preset = WELLNESS_PRESETS.find((p) => p.id === id);
-        if (preset) remind(preset, toastRef.current);
+        if (!preset) continue;
+        remind(preset, toastRef.current);
+        if (preset.breakSec) setBreakPopup({ preset, endsAt: now + preset.breakSec * 1000 });
       }
       setActive((a) => {
         const next = { ...a };
@@ -73,6 +77,17 @@ export default function WellnessWidget({ labelClass = '' }) {
     const t = setInterval(check, CHECK_MS);
     return () => clearInterval(t);
   }, []);
+
+  // Tick the break countdown; close shortly after it reaches zero.
+  const [, breakTick] = useState(0);
+  useEffect(() => {
+    if (!breakPopup) return;
+    const t = setInterval(() => {
+      breakTick((n) => n + 1);
+      if (Date.now() >= breakPopup.endsAt + 1500) setBreakPopup(null);
+    }, 250);
+    return () => clearInterval(t);
+  }, [breakPopup]);
 
   const toggle = useCallback((id, intervalMin) => {
     setActive((a) => {
@@ -107,6 +122,34 @@ export default function WellnessWidget({ labelClass = '' }) {
           </span>
         )}
       </button>
+
+      {breakPopup && (() => {
+        const { preset, endsAt } = breakPopup;
+        const left = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        const R = 54, C = 2 * Math.PI * R;
+        return (
+          <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="w-72 rounded-2xl bg-white p-6 text-center shadow-2xl dark:bg-stone-900">
+              <p className="text-lg font-semibold text-stone-900 dark:text-stone-100">{preset.icon} {preset.label}</p>
+              <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{preset.description}</p>
+              <div className="relative mx-auto my-5 h-32 w-32">
+                <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+                  <circle cx="60" cy="60" r={R} fill="none" strokeWidth="8" className="stroke-stone-200 dark:stroke-stone-700" />
+                  <circle cx="60" cy="60" r={R} fill="none" strokeWidth="8" strokeLinecap="round" stroke={preset.color}
+                    strokeDasharray={C} strokeDashoffset={C * (1 - left / preset.breakSec)} style={{ transition: 'stroke-dashoffset 250ms linear' }} />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center font-mono text-4xl font-bold" style={{ color: preset.color }}>
+                  {left > 0 ? left : '✓'}
+                </span>
+              </div>
+              <p className="mb-4 text-sm text-stone-600 dark:text-stone-300">{left > 0 ? 'Keep looking away…' : 'Done! Back to work 👍'}</p>
+              <button type="button" className="btn-primary px-5" onClick={() => setBreakPopup(null)}>
+                {left > 0 ? 'Skip' : 'Close'}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {open && (
         <Modal title="🌿 Wellness Reminders" onClose={() => setOpen(false)}>
