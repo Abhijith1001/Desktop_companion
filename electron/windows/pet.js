@@ -1,7 +1,9 @@
 // The transparent buddy window: position, movement, dragging and animation
 // state. Movement runs only while something is actually moving, and stops
 // entirely while the buddy is hidden.
+const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 const { app, BrowserWindow, ipcMain, screen, powerMonitor } = require('electron');
 const { AnimationController, STATES } = require('../pet/controller');
 const { createWindowProbe } = require('../pet/windowProbe');
@@ -17,6 +19,18 @@ const AFK_SECONDS = 5 * 60;  // nap after this long without keyboard/mouse input
 const NIGHT_IDLE_SECONDS = 60;
 const FOOT = 10;             // CSS px between the window bottom and the buddy's feet line
 const CALM = ['IDLE', 'SITTING', 'LOOKING_AROUND'];
+// A video walk cycle covers a fixed distance per loop, so sprite characters
+// move at one steady speed (scaled with size) to keep their feet planted.
+const SPRITE_SPEED = { WALKING: 2, RUNNING: 3 };
+
+// Ids of characters drawn from video poses (characters.js `sprite`).
+const SPRITE_IDS = (() => {
+  try {
+    const ctx = { window: {} };
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../pet/characters.js'), 'utf8'), ctx);
+    return new Set(Object.entries(ctx.window.CHARACTERS).filter(([, c]) => c.sprite).map(([id]) => id));
+  } catch { return new Set(); }
+})();
 
 function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDropText, onDragged = () => {}, holdEntrance = () => false, onPetted = () => {}, onWake = () => {} }) {
   let win = null;
@@ -253,7 +267,9 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
 
       // 2. Horizontal Locomotion & Human Gait Physics
       const isWalkingOrRunning = controller.isMoving && animationMode() === 'full';
-      const cruiseSpeed = controller.state === STATES.RUNNING ? SPEED.RUNNING : SPEED.WALKING;
+      const sprite = SPRITE_IDS.has(settings.get('character'));
+      const speeds = sprite ? { RUNNING: SPRITE_SPEED.RUNNING * size, WALKING: SPRITE_SPEED.WALKING * size } : SPEED;
+      const cruiseSpeed = controller.state === STATES.RUNNING ? speeds.RUNNING : speeds.WALKING;
 
       // Boundary handling: turn around smoothly
       if (pos.x <= minX && dir < 0) {
@@ -292,7 +308,8 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
       }
 
       // Biomechanical Step Modulation (footstep push-off & gait bobbing)
-      if (Math.abs(physics.vx) > 0.1 && !isAirborne) {
+      // (Not for sprite characters: their video already has its own gait.)
+      if (Math.abs(physics.vx) > 0.1 && !isAirborne && !sprite) {
         const cadenceFactor = Math.abs(physics.vx) / SPEED.WALKING;
         physics.gaitPhase += 0.22 * Math.min(cadenceFactor, 1.8);
         if (physics.gaitPhase > Math.PI * 2) physics.gaitPhase -= Math.PI * 2;
@@ -306,7 +323,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
         pos.y = gy + yGaitBob;
       } else {
         pos.x += physics.vx;
-        if (!isAirborne) physics.gaitPhase = 0;
+        if (!isAirborne) { physics.gaitPhase = 0; if (sprite) pos.y = gy; }
       }
 
       // Keep visual CSS in sync with physical movement (avoid overriding emotional states)

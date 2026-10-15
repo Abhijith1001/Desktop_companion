@@ -23,7 +23,7 @@
   // ---------- drawing
   function render() {
     const c = window.CHARACTERS[character] || window.CHARACTERS.dog;
-    buddy.className = ['buddy', css, dir < 0 ? 'left' : '', c.upright ? 'upright' : '',
+    buddy.className = ['buddy', css, c.sprite ? 'sprite' : '', dir < 0 ? 'left' : '', c.upright ? 'upright' : '',
       options.animation === 'reduced' ? 'reduced' : '', options.animation === 'off' ? 'still' : '',
       options.paused ? 'paused' : '', mannerism ? `m-${mannerism}` : '',
       `mood-${mood.level}`, mood.hungry ? 'hungry' : '', hovering && !dragging ? 'hovered' : '',
@@ -35,11 +35,15 @@
   }
 
   // ---------- sprite characters: swap the pose image to match state and mood
+  // A pose the character doesn't have falls back to idle (see spriteUrl).
   const POSES = {
-    walk: ['walk', 'run', 'drag', 'falling'],
-    angry: ['angry', 'impact'],
+    walk: ['walk', 'run'],
+    held: ['drag'],
+    fall: ['falling'],
+    land: ['impact', 'dizzy', 'recovering'],
+    angry: ['angry'],
     happy: ['happy', 'love', 'eat', 'wave'],
-    warn: ['alert', 'dizzy', 'recovering'],
+    warn: ['alert'],
   };
   function spritePose() {
     if (hot && !options.paused) return 'angry';

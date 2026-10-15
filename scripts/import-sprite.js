@@ -5,8 +5,8 @@
 //
 // <folder> holds one file per pose, named by pose: idle.png, walk.mp4,
 // happy.mp4, warn.png, angry.png (PNG/JPG images or MP4/MOV/WEBM clips) on a
-// plain white background. Each pose is written as an animated WebP with the
-// white keyed out to electron/pet/public/sprites/<id>/. Needs ffmpeg on PATH
+// plain light background. Each pose is written as an animated WebP with the
+// background colour keyed out to electron/pet/public/sprites/<id>/. Needs ffmpeg on PATH
 // (winget install Gyan.FFmpeg). For cleaner edges, cut the background out
 // beforehand (e.g. rembg) and supply transparent PNG/WEBM files: keying then
 // leaves them alone.
@@ -28,6 +28,15 @@ const opt = (name, def) => {
 const fps = opt('fps', 24);
 const height = opt('height', 260);
 const similarity = opt('similarity', 0.12);
+
+// AI video backgrounds are rarely pure white: sample the top-left corner of
+// the first frame and key out that colour instead.
+function backgroundColor(src) {
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-i', src, '-vf', 'crop=iw/12:ih/12:0:0,scale=1:1',
+    '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
+  if (r.status !== 0 || r.stdout.length < 3) return 'white';
+  return `0x${[...r.stdout.subarray(0, 3)].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
 const [id, folder] = args;
 if (!id || !folder || !/^[a-z][a-z0-9-]*$/.test(id)) {
   console.error('Usage: node scripts/import-sprite.js <id: lowercase letters/digits> <folder> [--fps 24] [--height 260] [--similarity 0.12]');
@@ -51,7 +60,7 @@ for (const pose of POSES) {
   const isVideo = VIDEO.includes(path.extname(file).toLowerCase());
   const dest = path.join(out, `${pose}.webp`);
   const filter = [
-    `colorkey=white:${similarity}:0.08`,
+    `colorkey=${backgroundColor(src)}:${similarity}:0.08`,
     isVideo ? `fps=${fps}` : null,
     `scale=-2:${height}:flags=lanczos`,
     'format=yuva420p',
@@ -79,6 +88,6 @@ Done. Register the character in electron/pet/characters.js (inside window.CHARAC
   ${id}: {
     name: '${id[0].toUpperCase()}${id.slice(1)}',
     upright: true,
-    sprite: ${JSON.stringify(found).replace(/"/g, "'").replace(/,/g, ', ').replace(/:/g, ': ')},
+    sprite: { ${Object.entries(found).map(([k, v]) => `${k}: '${v}'`).join(', ')} },
   },
 `);
