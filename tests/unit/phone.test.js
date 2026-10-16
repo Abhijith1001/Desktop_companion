@@ -229,6 +229,24 @@ describe('phone notifications', () => {
     expect(shown.map((n) => n.title)).toEqual(['Asha']);
   });
 
+  it('uses the Bluetooth list instead of adb while the Buddy Link app is connected', async () => {
+    const { toRecords } = require('../../electron/phone/bluetooth');
+    const adb = vi.fn();
+    const onMessage = vi.fn();
+    let items = [{ key: '0|com.whatsapp|1|null', pkg: 'com.whatsapp', title: 'Rahul', text: 'hi', when: 100 }];
+    let shown = [];
+    const w = createNotificationWatcher({
+      adb, getSerial: async () => null, enabled: () => false, onMessage, onList: (l) => { shown = l; }, log: { warn() {} },
+      getBluetooth: () => ({ id: 'bt:phone', items: toRecords(items) }),
+    });
+    await w.poll();
+    expect(shown.map((n) => [n.app, n.title, n.text])).toEqual([['WhatsApp', 'Rahul', 'hi']]);
+    items = [...items, { key: '0|org.telegram.messenger|2|null', pkg: 'org.telegram.messenger', title: 'Asha', when: 200 }];
+    await w.poll();
+    expect(onMessage).toHaveBeenCalledWith({ app: 'Telegram', from: 'Asha' });
+    expect(adb).not.toHaveBeenCalled();
+  });
+
   it('polls through adb and reports new senders', async () => {
     let when = 100;
     const adb = vi.fn(async () => dump(record({ pkg: 'org.telegram.messenger', id: 2, title: 'Asha', when })));
@@ -269,5 +287,24 @@ describe('phone IPC validation', () => {
     expect(() => h['phone:disconnect']('a b')).toThrow();
     expect(() => h['phone:input']({ kind: 'shell', cmd: 'rm' })).toThrow();
     expect(() => h['phone:input']({ kind: 'text', text: '' })).toThrow();
+  });
+});
+
+describe('Buddy Link bluetooth messages', () => {
+  const { parseLine, toRecords } = require('../../electron/phone/bluetooth');
+
+  it('reads only well-formed bridge lines', () => {
+    expect(parseLine('{"t":"hello","model":"RMX5030"}')).toEqual({ t: 'hello', model: 'RMX5030' });
+    expect(parseLine('garbage')).toBeNull();
+    expect(parseLine('{"t":')).toBeNull();
+    expect(parseLine('{"x":1}')).toBeNull();
+  });
+
+  it('turns the phone list into watcher records and drops bad entries', () => {
+    expect(toRecords([
+      { key: 'k', pkg: 'com.whatsapp', title: 'A', text: '', when: '5', summary: 1 },
+      { pkg: 'no.key' }, null,
+    ])).toEqual([{ key: 'k', pkg: 'com.whatsapp', when: 5, title: 'A', text: null, subText: null, summary: true, ongoing: false }]);
+    expect(toRecords('nope')).toEqual([]);
   });
 });

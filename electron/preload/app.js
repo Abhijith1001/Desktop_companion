@@ -146,6 +146,8 @@ contextBridge.exposeInMainWorld('buddy', {
     notifications: invoke('phone:notifications'),
     clearNotifications: invoke('phone:notifications-clear'),
     onNotifications: on('phone:notifications'),
+    btStatus: invoke('phone:bt-status'),
+    onBt: on('phone:bt'),
   },
   habits: {
     list: invoke('habits:list'),

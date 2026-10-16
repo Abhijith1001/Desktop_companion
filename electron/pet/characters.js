@@ -3,7 +3,11 @@
 //   .leg / .leg.b   legs (".b" swings in opposite phase)
 //   .arm / .arm.b   arms (upright characters only)
 //   #tail, #head, #eye-open, #eye-closed, #tongue
+//   #head may set data-pivot="x y": the neck point it turns around
 // `upright: true` switches sit/sleep poses to the two-legged versions.
+// `side` (optional) is a side-view drawing, facing right, used while walking
+// and running; it animates .s-leg / .s-arm (".b" = far side), .s-tail, .s-eye.
+// `sideHat` is its [x, y, scale] accessory anchor.
 window.CHARACTERS = {
   dog: {
     name: 'Cute Dog',
@@ -16,9 +20,10 @@ window.CHARACTERS = {
       <ellipse cx="74" cy="84" rx="30" ry="12" fill="#f6dcb8"/>
       <rect class="leg back"    x="28" y="84" width="13" height="32" rx="6.5" fill="#e8994a"/>
       <rect class="leg front b" x="102" y="84" width="13" height="32" rx="6.5" fill="#e8994a"/>
+      <ellipse cx="108" cy="58" rx="13" ry="15" fill="#e8994a"/>
       <path d="M98 54 Q104 70 116 66" stroke="#e0443e" stroke-width="6" fill="none" stroke-linecap="round"/>
       <circle cx="106" cy="70" r="4" fill="#ffd34d" stroke="#b8901c" stroke-width="1"/>
-      <g id="head">
+      <g id="head" data-pivot="110 62">
         <path d="M101 32 L106 8 L120 26 Z" fill="#c97a2e"/>
         <circle cx="118" cy="44" r="24" fill="#e8994a"/>
         <path d="M112 26 L123 3 L134 27 Z" fill="#c97a2e"/>
@@ -118,6 +123,47 @@ window.CHARACTERS = {
         fill="none" stroke="#292d33" stroke-width="1.5"
         stroke-linecap="round"/>
     </g></g>`,
+    sideHat: [86, 18, 0.8],
+    side: `
+    <!-- Tail (behind) -->
+    <path class="s-tail" d="M60 94 Q38 98 34 82 Q31 68 42 62"
+      stroke="#737985" stroke-width="8" fill="none" stroke-linecap="round"/>
+
+    <!-- Far arm and leg (darker) -->
+    <g class="s-arm b"><rect x="76" y="64" width="10" height="22" rx="5" fill="#5a606b"/>
+      <ellipse cx="82" cy="87" rx="6" ry="5.5" fill="#e4e1de" stroke="#292d33" stroke-width="1"/></g>
+    <g class="s-leg b"><rect x="66" y="90" width="14" height="20" rx="7" fill="#5a606b"/>
+      <ellipse cx="78" cy="113" rx="11" ry="5" fill="#e4e1de" stroke="#292d33" stroke-width="1"/></g>
+
+    <!-- Pear-shaped body, leaning forward a little -->
+    <path d="M60 98 Q54 76 66 63 Q78 54 88 64 Q96 80 88 98 Q75 106 60 98 Z"
+      fill="#737985" stroke="#292d33" stroke-width="1.5"/>
+    <path d="M80 70 Q91 78 87 95 Q82 100 76 98 Q81 84 80 70 Z" fill="#e8e5e2"/>
+
+    <!-- Near leg -->
+    <g class="s-leg"><rect x="64" y="90" width="15" height="20" rx="7.5" fill="#737985"/>
+      <ellipse cx="77" cy="113" rx="11.5" ry="5" fill="#f4f1ee" stroke="#292d33" stroke-width="1"/></g>
+
+    <!-- Big cartoon head in profile, like the front view -->
+    <g class="s-head">
+      <path d="M88 24 L101 1 L106 28 Z" fill="#555b66" stroke="#292d33" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M64 40 Q60 22 78 17 Q96 13 106 24 Q113 31 112 41 Q118 47 114 54 Q108 62 94 62 Q72 64 66 52 Q63 47 64 40 Z"
+        fill="#737985" stroke="#292d33" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M66 28 L66 2 L86 20 Z" fill="#626975" stroke="#292d33" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M69 23 L69 9 L80 20 Z" fill="#f39b9b"/>
+      <path d="M80 19 L83 27 M87 18 L88 26 M74 21 L77 28" stroke="#454b55" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M95 48 Q104 40 113 45 Q119 50 113 57 Q103 62 95 56 Q92 52 95 48 Z" fill="#f4f1ee"/>
+      <path d="M110.5 41.5 Q116 40.5 116.5 44.5 L112.5 47 Z" fill="#302a2b"/>
+      <path d="M113 47.5 Q112 53 105 53" fill="none" stroke="#302a2b" stroke-width="1.6" stroke-linecap="round"/>
+      <g class="s-eye"><ellipse cx="99" cy="33" rx="6.5" ry="9.5" fill="#f8df45" stroke="#292d33" stroke-width="1"/>
+        <ellipse cx="101.5" cy="34.5" rx="2.6" ry="6" fill="#253322"/>
+        <circle cx="100.5" cy="30" r="1.4" fill="#fff"/></g>
+      <path d="M100 51 L120 46 M100 54.5 L121 56" fill="none" stroke="#292d33" stroke-width="1.2" stroke-linecap="round"/>
+    </g>
+
+    <!-- Near arm -->
+    <g class="s-arm"><rect x="73" y="64" width="11" height="23" rx="5.5" fill="#737985" stroke="#292d33" stroke-width="1"/>
+      <ellipse cx="79.5" cy="88" rx="6.5" ry="6" fill="#f4f1ee" stroke="#292d33" stroke-width="1"/></g>`,
   },
 
   cat: {
@@ -282,7 +328,10 @@ window.spriteUrl = (id, pose) => {
 // No #head group: the video already moves, so cursor-look must not tilt it.
 for (const [id, c] of Object.entries(window.CHARACTERS)) {
   if (c.sprite && !c.svg) {
-    c.svg = `<g class="sprite-g"><image class="sprite" href="${window.spriteUrl(id, 'idle')}" x="0" y="-14" width="160" height="130" preserveAspectRatio="xMidYMax meet"/></g>`;
+    // Colour keying leaves the clip's background faintly translucent, which
+    // shows as a box on dark desktops: drop low alpha, firm up the rest.
+    c.svg = `<defs><filter id="sprite-alpha-${id}"><feComponentTransfer><feFuncA type="linear" slope="1.6" intercept="-0.5"/></feComponentTransfer></filter></defs>`
+      + `<g class="sprite-g"><image class="sprite" filter="url(#sprite-alpha-${id})" href="${window.spriteUrl(id, 'idle')}" x="0" y="-14" width="160" height="130" preserveAspectRatio="xMidYMax meet"/></g>`;
   }
 }
 
@@ -315,6 +364,11 @@ window.buddyMarkup = function buddyMarkup(id, accessory) {
     const at = svg.lastIndexOf('</g>');
     svg = `${svg.slice(0, at)}<g class="accessory" transform="translate(${x} ${y}) scale(${s})">${art}</g>${svg.slice(at)}`;
   }
+  let side = c.side || '';
+  if (side && art) {
+    const [x, y, s] = c.sideHat || [80, 30, 0.75];
+    side = `${side}<g class="accessory" transform="translate(${x} ${y}) scale(${s})">${art}</g>`;
+  }
   const [mx, my] = MOUTH_ANCHORS[id] || [92, 40];
   return `<svg viewBox="0 0 160 130" aria-hidden="true">
     <ellipse cx="78" cy="122" rx="52" ry="5" fill="#000" opacity=".15"/>
@@ -323,7 +377,7 @@ window.buddyMarkup = function buddyMarkup(id, accessory) {
       <path d="M0 -1 Q1 -6 4 -7" stroke="#4a7a2a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       <path d="M-7 5 L-4 2 L-1 5 Z M1 5 L4 2 L7 5 Z M-6 11 Q0 15 6 11 L3 12 L0 10 L-3 12 Z" fill="#3a1f0a"/>
     </g>
-    <g class="jump"><g class="body-g">${svg}</g></g>
+    <g class="jump"><g class="body-g">${c.side ? `<g class="pose-front">${svg}</g><g class="pose-side">${side}</g>` : svg}</g></g>
     <g class="fx-treat" transform="translate(${mx} ${my})">
       <g class="treat"><circle r="7" fill="#d9a066"/><circle cx="-2.5" cy="-2" r="1.3" fill="#5a3418"/><circle cx="2.5" cy="1" r="1.3" fill="#5a3418"/><circle cx="-1" cy="3" r="1.1" fill="#5a3418"/></g>
       <g class="crumbs" fill="#d9a066"><circle cx="-4" cy="6" r="1.5"/><circle cx="3" cy="8" r="1.2"/><circle cx="6" cy="4" r="1"/></g>

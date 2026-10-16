@@ -466,3 +466,46 @@
 .buddy.sprite .jump { transform-box: view-box; transform-origin: 80px 0; transition: transform .25s ease-out; }
 /* Held by the scruff: hangs from the cursor and swings with the drag. */
 .buddy.sprite.drag .jump, .buddy.sprite.drag.fast-drag .jump { transform: rotate(calc(var(--drag-tilt, 0deg) * .6)); }
+
+/* Side view while walking and running (characters with a `side` drawing).
+   The drawing faces right; .left mirrors it. Negative rotation swings a
+   limb forward. */
+.buddy .pose-side { display: none; }
+.buddy.walk .pose-side, .buddy.run .pose-side { display: inline; }
+.buddy.walk .pose-front, .buddy.run .pose-front { display: none; }
+.buddy .s-leg { transform-box: fill-box; transform-origin: 50% 6%; }
+.buddy .s-arm { transform-box: fill-box; transform-origin: 50% 8%; }
+.buddy .s-tail { transform-box: view-box; transform-origin: 62px 96px; animation: b-sTail .65s ease-in-out infinite alternate; }
+.buddy .s-head { transform-box: view-box; transform-origin: 82px 62px; }
+.buddy .s-eye { transform-box: fill-box; transform-origin: center; animation: b-blink 4s infinite; }
+@keyframes b-sLeg {
+  0%   { transform: translateY(0) rotate(-17deg); }   /* heel strike, in front */
+  50%  { transform: translateY(0) rotate(15deg); }    /* toe off, behind */
+  75%  { transform: translateY(-4px) rotate(-3deg); } /* foot lifted, swinging through */
+  100% { transform: translateY(0) rotate(-17deg); }
+}
+@keyframes b-sArm { 0%, 100% { transform: rotate(16deg); } 50% { transform: rotate(-16deg); } }
+@keyframes b-sRunLeg {
+  0%   { transform: translateY(0) rotate(-28deg); }
+  45%  { transform: translateY(0) rotate(22deg); }
+  70%  { transform: translateY(-7px) rotate(-6deg); }
+  100% { transform: translateY(0) rotate(-28deg); }
+}
+@keyframes b-sRunArm { 0%, 100% { transform: rotate(30deg); } 50% { transform: rotate(-30deg); } }
+@keyframes b-sTail { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+@keyframes b-sHead { 0%, 50%, 100% { transform: translateY(0); } 25%, 75% { transform: translateY(-1.5px); } }
+.buddy.walk .s-leg   { animation: b-sLeg .65s linear infinite; }
+.buddy.walk .s-leg.b { animation-delay: -.325s; }
+.buddy.walk .s-arm   { animation: b-sArm .65s ease-in-out infinite; }
+.buddy.walk .s-arm.b { animation-delay: -.325s; }
+.buddy.walk .s-head  { animation: b-sHead .65s ease-in-out infinite; }
+.buddy.run .s-leg    { animation: b-sRunLeg .35s linear infinite; }
+.buddy.run .s-leg.b  { animation-delay: -.175s; }
+.buddy.run .s-arm    { animation: b-sRunArm .35s ease-in-out infinite; }
+.buddy.run .s-arm.b  { animation-delay: -.175s; }
+.buddy.run .s-head   { animation: b-sHead .35s ease-in-out infinite; }
+.buddy.run .s-tail   { animation-duration: .2s; }
+.buddy.reduced .pose-side *, .buddy.still .pose-side * { animation: none !important; }
+/* the upright walk sway is for the front view; in profile only bob */
+.buddy.upright.walk .body-g:has(.pose-side) { animation-name: b-sBody; }
+@keyframes b-sBody { 0%, 50%, 100% { transform: translateY(0); } 25%, 75% { transform: translateY(-2.5px); } }

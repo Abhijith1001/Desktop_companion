@@ -20,6 +20,7 @@ const { createEngine } = require('./scheduler/engine');
 const { createSync } = require('./sync/client');
 const { createPresenter } = require('./notifications/presenter');
 const { createPetWindow } = require('./windows/pet');
+const { createFriends } = require('./pet/friends');
 const { createManager } = require('./windows/manager');
 const { createTray } = require('./tray/tray');
 const { createHandlers } = require('./ipc/handlers');
@@ -32,6 +33,7 @@ const { createHabitService } = require('./services/habits');
 const { createCommunity } = require('./services/community');
 const { createPhoneMirror } = require('./phone');
 const { createNotificationWatcher } = require('./phone/notifications');
+const { createBluetoothLink } = require('./phone/bluetooth');
 const dialogue = require('./dialogue');
 
 const APP_ID = 'com.devwerks.desktopbuddy';
@@ -61,14 +63,14 @@ function start() {
     community?.reportCrash({ source: 'main', message: String(err && err.message || err), stack: err && err.stack });
   });
 
-  let db; let settings; let tasks; let engine; let sync; let presenter; let pet; let manager; let tray; let phone; let phoneAlerts;
+  let db; let settings; let tasks; let engine; let sync; let presenter; let pet; let manager; let tray; let phone; let phoneAlerts; let phoneBt;
   let sysmon;
-  let bookmarks; let capture; let ai; let notes; let onboarding; let progress; let life; let updater; let habits; let community;
+  let bookmarks; let capture; let ai; let notes; let onboarding; let progress; let life; let updater; let habits; let community; let friends;
 
   const characters = () => {
     const ctx = { window: {} };
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'pet/characters.js'), 'utf8'), ctx);
-    return Object.entries(ctx.window.CHARACTERS).map(([id, c]) => ({ id, name: c.name }));
+    return Object.entries(ctx.window.CHARACTERS).map(([id, c]) => ({ id, name: c.name, sprite: !!c.sprite }));
   };
 
   // Cloud token: encrypted with the OS credential store, never stored in plain text.
@@ -374,11 +376,18 @@ function start() {
     if (settings.get('startHidden') && process.argv.includes('--autostart')) settings.update({ buddyHidden: true });
 
     tray = createTray({ icon, settings, tasks, characters, getPet: () => pet, openTasks, pause, exit, care: life });
+    friends = createFriends({ settings, log, getPet: () => pet, characters, onMenu: (win) => tray.popup(win), onClick: () => openTasks('/tasks') });
 
     // A connected phone's notifications: the full list goes to the Phone page;
     // the buddy says who, never what (its bubble is visible to anyone nearby).
+    // Notifications can also come over Bluetooth from the Buddy Link phone app.
+    phoneBt = createBluetoothLink({
+      log,
+      onStatus: (s) => manager.send('phone:bt', s),
+      onList: () => phoneAlerts && phoneAlerts.poll(),
+    });
     phoneAlerts = createNotificationWatcher({
-      adb: phone.adb, getSerial: phone.readySerial, log,
+      adb: phone.adb, getSerial: phone.readySerial, log, getBluetooth: () => phoneBt.current(),
       enabled: () => phone.available(),
       announce: () => (!settings.get('phoneAlerts') ? 'off' : settings.get('phoneAlertsAll') ? 'all' : 'chat'),
       onList: (list) => manager.send('phone:notifications', list),
@@ -390,6 +399,7 @@ function start() {
       },
     });
     phoneAlerts.start();
+    if (settings.get('phoneBluetooth')) phoneBt.start();
 
     // A linked phone reconnects by itself, so notifications keep coming after
     // the window closes or the app restarts (wireless debugging drops often).
@@ -410,6 +420,7 @@ function start() {
     const handlers = createHandlers({
       tasks, settings, engine, sync, pet: () => pet, exportData, confirmDeleteAccount, previewBuddy,
       bookmarks, ai, confirmClearBookmarks, notes, onboarding, progress, updater: () => updater, weather: life.weather, buddyCare: life, habits, community, phone,
+      phoneBluetooth: () => phoneBt.status(),
       phoneNotifications: () => (phoneAlerts ? phoneAlerts.list() : []),
       clearPhoneNotifications: () => (phoneAlerts ? phoneAlerts.clear() : true),
       copyText: (text) => clipboard.writeText(text),
@@ -467,6 +478,7 @@ function start() {
       if (['character', 'theme', 'timeZone'].some((k) => k in patch)) sync.markPreferencesDirty();
       if ('quietHours' in patch || 'pausedUntil' in patch || 'missedPolicy' in patch) engine.wake();
       if ('capture' in patch) registerShortcuts();
+      if ('phoneBluetooth' in patch) { if (patch.phoneBluetooth) phoneBt.start(); else phoneBt.stop(); }
     });
 
     engine.start();
@@ -507,7 +519,7 @@ function start() {
 
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
-    try { engine && engine.stop(); sync && sync.stop(); life && life.stop(); sysmon && sysmon.stop(); updater && updater.stop(); community && community.stop(); phoneAlerts && phoneAlerts.stop(); phone && phone.shutdown(); pet && pet.destroy(); } catch { /* shutting down */ }
+    try { engine && engine.stop(); sync && sync.stop(); life && life.stop(); sysmon && sysmon.stop(); updater && updater.stop(); community && community.stop(); phoneAlerts && phoneAlerts.stop(); phoneBt && phoneBt.stop(); phone && phone.shutdown(); friends && friends.stop(); pet && pet.destroy(); } catch { /* shutting down */ }
     try { db && db.close(); } catch { /* already closed */ }
     log.info('stopped');
   });

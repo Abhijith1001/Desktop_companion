@@ -64,6 +64,7 @@ const settingsPatch = z.object({
   perchOnWindows: z.boolean(),
   phoneAlerts: z.boolean(),
   phoneAlertsAll: z.boolean(),
+  phoneBluetooth: z.boolean(),
   phoneLink: z.object({ enabled: z.boolean(), address: z.string().regex(/^[\w.-]{1,253}:\d{1,5}$/).nullable() }),
   weather: z.object({
     enabled: z.boolean(),

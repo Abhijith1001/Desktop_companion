@@ -72,6 +72,20 @@ function createTray({ icon, settings, tasks, characters, getPet, openTasks, paus
         })),
       },
       {
+        label: 'Friend',
+        submenu: [
+          {
+            label: 'Add a friend', type: 'checkbox', checked: !!s.friendEnabled,
+            click: (item) => settings.update({ friendEnabled: item.checked }),
+          },
+          { type: 'separator' },
+          ...characters().filter((c) => !c.sprite).map(({ id, name }) => ({
+            label: name, type: 'radio', checked: s.friendCharacter === id,
+            click: () => settings.update({ friendCharacter: id, friendEnabled: true }),
+          })),
+        ],
+      },
+      {
         label: pet && pet.isSleeping() ? 'Wake buddy up' : 'Put buddy to sleep',
         click: () => pet && pet.setSleeping(!pet.isSleeping()),
       },

@@ -64,6 +64,8 @@ for (const pose of POSES) {
     isVideo ? `fps=${fps}` : null,
     `scale=-2:${height}:flags=lanczos`,
     'format=yuva420p',
+    // Wipe the faint leftovers of an uneven background so no box shows.
+    "lut=a='if(lt(val,90),0,val)'",
   ].filter(Boolean).join(',');
   // Clips loop forever except the one-shot reactions, which hold their last frame.
   const loop = ['idle', 'walk', 'held', 'fall'].includes(pose) ? '0' : '1';

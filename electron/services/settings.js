@@ -28,6 +28,9 @@ const DEFAULTS = {
   startWithWindows: false,
   startHidden: false,
   buddyHidden: false,
+  friendEnabled: false,          // a second buddy that plays with the first
+  friendCharacter: 'cat',        // never a sprite character
+  friendPosition: null,
   pausedUntil: null,             // ISO; reminders held until then
   position: null,                // { x, displayId } last dropped position
   theme: 'system',               // system | light | dark
@@ -39,6 +42,7 @@ const DEFAULTS = {
   perchOnWindows: true,          // sometimes jump up and sit on top of the active window
   phoneAlerts: true,             // buddy says who messaged you on a connected phone (sender only)
   phoneLink: { enabled: false, address: null }, // keep a phone connected for notifications (address = last Wi-Fi IP:port)
+  phoneBluetooth: false,         // get notifications over Bluetooth from the Buddy Link phone app
   phoneAlertsAll: false,         // ...for every app's notifications, not just chat apps
   // Local weather (Open-Meteo). location: { name, lat, lon, country } or null.
   weather: { enabled: true, location: null, unit: 'C' },

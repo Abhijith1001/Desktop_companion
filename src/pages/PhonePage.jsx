@@ -34,6 +34,7 @@ export default function PhonePage() {
   const phoneAlerts = useSettings((s) => s.settings.phoneAlerts);
   const phoneAlertsAll = useSettings((s) => s.settings.phoneAlertsAll);
   const phoneLink = useSettings((s) => s.settings.phoneLink);
+  const phoneBluetooth = useSettings((s) => s.settings.phoneBluetooth);
   const updateSettings = useSettings((s) => s.update);
   const [status, setStatus] = useState(null);
   const [devices, setDevices] = useState([]);
@@ -44,6 +45,7 @@ export default function PhonePage() {
   const [pairCode, setPairCode] = useState('');
   const [connectAddr, setConnectAddr] = useState(() => loadPrefs().lastAddress || '');
   const [screenOff, setScreenOff] = useState(false);
+  const [bt, setBt] = useState({ state: 'off', device: null });
 
   const updatePrefs = (patch) => setPrefs((p) => { const next = { ...p, ...patch }; savePrefs(next); return next; });
 
@@ -58,13 +60,15 @@ export default function PhonePage() {
       setStatus(s);
       if (s.available) refresh();
     });
+    api.phone.btStatus().then(setBt).catch(() => {});
+    const offBt = api.phone.onBt(setBt);
     const off = api.phone.onStatus((s) => {
       setStatus((prev) => ({ ...prev, ...s }));
       if (s.state === 'error') toast(s.message, 'error');
     });
     // Picks up a phone that reconnected by itself in the background.
     const t = setInterval(() => { if (!document.hidden) api.phone.devices().then(setDevices).catch(() => {}); }, 10_000);
-    return () => { off(); clearInterval(t); };
+    return () => { off(); offBt(); clearInterval(t); };
   }, [refresh, toast]);
 
   async function run(label, fn) {
@@ -202,6 +206,7 @@ export default function PhonePage() {
           <button type="button" className="btn-ghost" disabled={!!busy} onClick={unlink}>Unlink</button>
         </section>
       )}
+      <BluetoothCard on={!!phoneBluetooth} bt={bt} onToggle={(v) => updateSettings({ phoneBluetooth: v })} />
       <section className="card p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-semibold">Your phones</h2>
@@ -270,7 +275,7 @@ export default function PhonePage() {
         )}
       </section>
 
-      {ready.length > 0 && <PhoneNotifications className="max-h-[28rem]" />}
+      {(ready.length > 0 || bt.state === 'connected') && <PhoneNotifications className="max-h-[28rem]" />}
 
       <section className="card p-5">
         <h2 className="font-semibold">Connect over Wi-Fi</h2>
@@ -324,4 +329,30 @@ function Shell({ children }) {
 
 function ToolButton({ label, onClick, children }) {
   return <button type="button" className="btn-outline" title={label} aria-label={label} onClick={onClick}>{children}</button>;
+}
+
+const BT_TEXT = {
+  connected: 'Notifications are coming in over Bluetooth.',
+  searching: 'Looking for your phone… Keep Bluetooth on and Buddy Link set up on the phone.',
+  nophone: 'No paired phone. Pair your phone with this PC in Windows Bluetooth settings first.',
+  error: "Couldn't use Bluetooth on this PC. Check that Bluetooth is turned on.",
+};
+
+// Notifications without Wi-Fi or adb: the Buddy Link Android app sends them
+// over Bluetooth and reconnects by itself, like a smartwatch.
+function BluetoothCard({ on, bt, onToggle }) {
+  const connected = on && bt.state === 'connected';
+  return (
+    <section className="card p-5">
+      <Toggle label="Get notifications over Bluetooth" checked={on} onChange={onToggle}
+        description="Needs the Buddy Link app on your phone (android/BuddyLink.apk) and the phone paired with this PC. No Wi-Fi, USB or debugging needed; it reconnects by itself." />
+      {on && (
+        <div className="mt-2 flex items-center gap-2 text-sm">
+          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${connected ? 'bg-emerald-500' : 'animate-pulse bg-amber-500'}`} />
+          <span className="font-medium">{connected ? `Connected to ${bt.device || 'phone'}` : 'Not connected'}</span>
+          <span className="text-stone-500 dark:text-stone-400">· {BT_TEXT[bt.state] || BT_TEXT.searching}</span>
+        </div>
+      )}
+    </section>
+  );
 }

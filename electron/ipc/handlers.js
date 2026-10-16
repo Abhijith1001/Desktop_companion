@@ -64,7 +64,7 @@ function calendarRange(list, from, to) {
 
 function createHandlers({
   tasks, settings, engine, sync, pet, info, exportData, confirmDeleteAccount, openExternal, openLogs, previewBuddy,
-  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare, updater, habits, community, phone, phoneNotifications = () => [], clearPhoneNotifications = () => true,
+  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare, updater, habits, community, phone, phoneNotifications = () => [], phoneBluetooth = () => ({ state: 'off', device: null }), clearPhoneNotifications = () => true,
 }) {
   const changed = () => { engine.wake(); sync.notifyLocalChange(); };
 
@@ -236,6 +236,7 @@ function createHandlers({
     // ---- Phone mirror (local network only)
     'phone:status': () => phone.status(),
     'phone:notifications': () => phoneNotifications(),
+    'phone:bt-status': () => phoneBluetooth(),
     'phone:notifications-clear': () => clearPhoneNotifications(),
     'phone:devices': () => phone.devices(),
     'phone:discover': () => phone.discover(),

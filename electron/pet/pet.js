@@ -137,12 +137,25 @@
   function setupLook() {
     const head = buddy.querySelector('#head');
     lookHead = wrap(head, 'look-head');
-    lookEyes = wrap(buddy.querySelector('#eye-open'), 'look-eyes');
+    // The open eyes and the closed lids move together, so a blink mid-look
+    // closes where the eyes are.
+    const eyeOpen = buddy.querySelector('#eye-open');
+    const eyeClosed = buddy.querySelector('#eye-closed');
+    lookEyes = wrap(eyeOpen, 'look-eyes');
+    if (lookEyes && eyeClosed && eyeClosed.parentNode === lookEyes.parentNode) lookEyes.appendChild(eyeClosed);
     if (lookHead) {
-      try {
-        const b = head.getBBox();
-        lookHead.style.transformOrigin = `${b.x + b.width / 2}px ${b.y + b.height}px`;
-      } catch { /* not rendered yet */ }
+      const pivot = (head.getAttribute('data-pivot') || '').split(/s+/).map(Number);
+      if (pivot.length === 2 && pivot.every(Number.isFinite)) {
+        const origin = `${pivot[0]}px ${pivot[1]}px`;
+        lookHead.style.transformOrigin = origin;
+        head.style.transformBox = 'view-box';
+        head.style.transformOrigin = origin;
+      } else {
+        try {
+          const b = head.getBBox();
+          lookHead.style.transformOrigin = `${b.x + b.width / 2}px ${b.y + b.height}px`;
+        } catch { /* not rendered yet */ }
+      }
     }
   }
   const STILL_HEAD = ['sleep', 'drag', 'falling', 'impact', 'dizzy', 'recovering', 'angry', 'eat'];
@@ -158,11 +171,11 @@
     const fx = look.dx * dir;
     const dist = Math.max(1, Math.hypot(fx, look.dy));
     const clamp = (v, m) => Math.max(-m, Math.min(m, v));
-    const tilt = clamp((Math.atan2(look.dy, Math.max(Math.abs(fx), 25)) * 180) / Math.PI * 0.55, -20, 20);
-    const shiftX = clamp((fx / dist) * 3, -3, 3);
-    const shiftY = clamp((look.dy / dist) * 2.5, -2.5, 2.5);
+    const tilt = clamp((Math.atan2(look.dy, Math.max(Math.abs(fx), 25)) * 180) / Math.PI * 0.45, -14, 14);
+    const shiftX = clamp((fx / dist) * 2, -2, 2);
+    const shiftY = clamp((look.dy / dist) * 1.5, -1.5, 1.5);
     lookHead.style.transform = `translate(${shiftX.toFixed(1)}px, ${shiftY.toFixed(1)}px) rotate(${tilt.toFixed(1)}deg)`;
-    if (lookEyes) lookEyes.style.transform = `translate(${clamp((fx / dist) * 2.5, -2.5, 2.5).toFixed(1)}px, ${clamp((look.dy / dist) * 2.2, -2.2, 2.2).toFixed(1)}px)`;
+    if (lookEyes) lookEyes.style.transform = `translate(${clamp((fx / dist) * 1.6, -1.6, 1.6).toFixed(1)}px, ${clamp((look.dy / dist) * 1.4, -1.4, 1.4).toFixed(1)}px)`;
   }
 
   // ---------- click-through: only the buddy and bubble catch the mouse
@@ -271,7 +284,7 @@
     if (alert || dragging || sayTimer) return;
     let hint;
     try { hint = await api.invoke('pet:hint'); } catch { return; }
-    if (!hovering || alert || dragging) return;
+    if (!hint || !hovering || alert || dragging) return;
     const parts = [el('div', 'label', hint.label), el('div', 'title', hint.title)];
     if (hint.stats) parts.push(el('div', 'stats', hint.stats));
     if (hint.system) parts.push(el('div', 'stats system', hint.system));

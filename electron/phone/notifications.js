@@ -123,7 +123,8 @@ function cleanTitle(title) {
 }
 
 // announce() → 'off' | 'chat' | 'all'. onList gets the panel list whenever it changes.
-function createNotificationWatcher({ adb, getSerial, onMessage, onList = () => {}, log, enabled = () => true, announce = () => 'chat' }) {
+// getBluetooth() → { id, items } from the Buddy Link app, used instead of adb while connected.
+function createNotificationWatcher({ adb, getSerial, onMessage, onList = () => {}, log, enabled = () => true, announce = () => 'chat', getBluetooth = () => null }) {
   let timer = null;
   let tracker = createTracker();
   let lastSerial = null;
@@ -165,17 +166,19 @@ function createNotificationWatcher({ adb, getSerial, onMessage, onList = () => {
   }
 
   async function poll() {
-    if (busy || !enabled()) return;
+    if (busy) return;
+    const bt = getBluetooth();
+    if (!bt && !enabled()) return;
     busy = true;
     try {
-      const serial = await getSerial();
+      const serial = bt ? bt.id : await getSerial();
       // A different phone starts a fresh list; a dropped connection keeps it.
       if (serial && serial !== lastSerial) { tracker = createTracker(); history = new Map(); }
       if (serial !== lastSerial) lastSerial = serial;
       if (!serial) return;
       // Filtered on the phone: a few KB instead of a ~1 MB dump every poll,
       // which would otherwise compete with the mirror's video on Wi-Fi.
-      const parsed = parseNotifications(await adb(['-s', serial, 'shell', FILTERED_DUMP], { timeout: 10_000 }));
+      const parsed = bt ? bt.items : parseNotifications(await adb(['-s', serial, 'shell', FILTERED_DUMP], { timeout: 10_000 }));
       setList(merge(visibleList(parsed)));
       const mode = announce();
       const fresh = tracker(parsed, { allApps: mode === 'all' });

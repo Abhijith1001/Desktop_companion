@@ -32,7 +32,10 @@ const SPRITE_IDS = (() => {
   } catch { return new Set(); }
 })();
 
-function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDropText, onDragged = () => {}, holdEntrance = () => false, onPetted = () => {}, onWake = () => {} }) {
+// `friend` makes a second buddy: it shares the renderer and IPC channels with
+// the main one (handlers check the sender) but doesn't own the invoke
+// handlers, which can only be registered once.
+function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDropText, onDragged = () => {}, holdEntrance = () => false, onPetted = () => {}, onWake = () => {}, friend = false }) {
   let win = null;
   let size = settings.get('characterSize');
   let reducedMotion = false;
@@ -62,6 +65,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   let lastYawn = 0;
   let lastMood = null;      // resent when the renderer reloads
   let lastDecor = null;
+  let scripted = false;     // a friend interaction is steering the buddy
   const probe = createWindowProbe({ log });
   const EMOTIONAL_STATES = [STATES.ANGRY, STATES.FALLING, STATES.IMPACT, STATES.DIZZY, STATES.RECOVERING];
   const physics = {
@@ -345,7 +349,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   // Ambient behaviour + timed-state expiry, once a second.
   // Hovering the buddy stops it where it is (reminders and the tour keep going).
   function holdStill() {
-    if (drag || controller.reminderActive || tourHome || !controller.isMoving) return;
+    if (scripted || drag || controller.reminderActive || tourHome || !controller.isMoving) return;
     target = null;
     physics.targetVx = 0;
     physics.vx = 0;
@@ -387,6 +391,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
         lastYawn = Date.now();
         send('pet:mannerism', 'yawn');
       }
+      if (scripted) { ensureLoop(); return; }
       if (maybeChase() || maybePerch()) { ensureLoop(); return; }
       // Stay put and watch while the cursor is close.
       if (look && controller.state !== STATES.WALKING) { ensureLoop(); return; }
@@ -574,14 +579,14 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     const savedDisplay = saved && Number.isFinite(saved?.x) && screen.getAllDisplays().find((d) => d.id === saved.displayId);
     const d = savedDisplay || primary;
     const workArea = d?.workArea || { x: 0, y: 0, width: 1920, height: 1080 };
-    pos.x = (savedDisplay && Number.isFinite(saved?.x)) ? saved.x : workArea.x + workArea.width - w - 60;
+    pos.x = (savedDisplay && Number.isFinite(saved?.x)) ? saved.x : workArea.x + workArea.width - w - (friend ? 360 : 60);
     pos.y = workArea.y + workArea.height - h;
 
     win = new BrowserWindow({
       width: w, height: h, x: Math.round(pos.x), y: Math.round(pos.y),
       show: false, transparent: true, frame: false, resizable: false, hasShadow: false,
       skipTaskbar: true, alwaysOnTop: true, focusable: true, fullscreenable: false, maximizable: false,
-      title: 'Desktop Buddy',
+      title: friend ? 'Desktop Buddy friend' : 'Desktop Buddy',
       webPreferences: {
         preload: path.join(__dirname, '../preload/pet.js'),
         contextIsolation: true, nodeIntegration: false, sandbox: true,
@@ -632,7 +637,12 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   }
 
   // ---------- IPC from the pet renderer (only accepted from this window)
-  const fromPet = (handler) => (e, payload) => { if (alive() && e.sender === win.webContents) handler(payload); };
+  const listeners = [];
+  const fromPet = (handler) => {
+    const fn = (e, payload) => { if (alive() && e.sender === win.webContents) handler(payload); };
+    listeners.push(fn);
+    return fn;
+  };
 
   ipcMain.on('pet:ready', fromPet(() => {
     win.webContents.setZoomFactor(size);
@@ -651,10 +661,13 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   ipcMain.on('pet:hitbox', fromPet((r) => {
     if (r && [r.x, r.y, r.w, r.h].every(Number.isFinite)) hitbox = { x: r.x, y: r.y, w: r.w, h: r.h };
   }));
-  ipcMain.handle('pet:drop', (e, p) => {
-    if (!alive() || e.sender !== win.webContents || !p) return null;
-    return onDropText(typeof p.text === 'string' ? p.text : '', typeof p.uri === 'string' ? p.uri : '');
-  });
+  if (!friend) {
+    ipcMain.handle('pet:drop', (e, p) => {
+      if (!alive() || e.sender !== win.webContents || !p) return null;
+      return onDropText(typeof p.text === 'string' ? p.text : '', typeof p.uri === 'string' ? p.uri : '');
+    });
+    ipcMain.handle('pet:hint', (e) => (alive() && e.sender === win.webContents ? hint() : null));
+  }
   ipcMain.on('pet:reduced-motion', fromPet((v) => { reducedMotion = !!v; sendOptions(); }));
   ipcMain.on('pet:menu', fromPet(() => onMenu(win)));
   const ANGRY_SPEECHES = [
@@ -701,6 +714,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
       clickTimer = null;
     }
     const c = screen.getCursorScreenPoint();
+    scripted = false;
     drag = { offX: c.x - pos.x, offY: c.y - pos.y, startX: c.x, startY: c.y, lastX: c.x, lastY: c.y, moved: false };
     target = null;
     hopDown = false;
@@ -778,7 +792,6 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     ensureLoop();
     onDragged();
   }));
-  ipcMain.handle('pet:hint', (e) => (alive() && e.sender === win.webContents ? hint() : null));
 
   // ---------- public API
   function show() {
@@ -793,6 +806,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   function hide() {
     if (!alive()) return;
     win.hide();
+    scripted = false;
     settings.update({ buddyHidden: true });
     sendOptions();
     perch = null;
@@ -802,6 +816,7 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   function startReminder({ center }) {
     if (!alive()) return;
     win.moveTop();
+    scripted = false;
     perch = null;
     setLook(null);
     controller.transition(STATES.REMINDER);
@@ -914,6 +929,10 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
   }
 
   function destroy() {
+    if (friend) {
+      for (const ch of ipcMain.eventNames()) for (const fn of listeners) ipcMain.removeListener(ch, fn);
+      if (alive()) win.destroy();
+    }
     if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
     clearInterval(loop);
     clearInterval(brain);
@@ -972,7 +991,33 @@ function createPetWindow({ settings, log, onClick, onMenu, onReady, hint, onDrop
     setMood: (m) => { lastMood = m; send('pet:mood', m); },
     setDecor: (d) => { lastDecor = d; send('pet:decor', d); },
     get window() { return win; },
+
+    // ---------- friend interactions (driven by pet/friends.js)
+    // Free to play: on screen, awake, on the ground and not busy with the user.
+    isFree: () => alive() && win.isVisible() && !drag && !perch && !controller.reminderActive
+      && controller.state !== STATES.SLEEPING && !EMOTIONAL_STATES.includes(controller.state)
+      && (!target || scripted) && !tourHome && animationMode() === 'full',
+    isScripted: () => scripted,
+    // Feet centre on screen, in DIPs.
+    center: () => ({ x: pos.x + dims().w / 2, w: dims().w, displayId: display().id }),
+    script(on) {
+      scripted = !!on;
+      if (!scripted) { target = null; ambientCountdown = 3; if (!controller.reminderActive && !drag) controller.transition(STATES.IDLE); }
+    },
+    face(d) { setDir(d < 0 ? -1 : 1); },
+    act(state) { if (alive() && STATES[state]) controller.transition(STATES[state]); ensureLoop(); },
+    // Walk or run until the feet centre reaches x, then call onArrive.
+    moveTo(x, { run = false, onArrive } = {}) {
+      if (!alive() || drag) return;
+      const { minX, maxX } = bounds();
+      const tx = Math.min(maxX, Math.max(minX, x - dims().w / 2));
+      setDir(tx > pos.x ? 1 : -1);
+      controller.transition(run ? STATES.RUNNING : STATES.WALKING);
+      target = { x: tx, y: groundY(), onArrive: () => { controller.transition(STATES.IDLE); onArrive?.(); } };
+      ensureLoop();
+    },
+    say(text, ms = 2200) { send('pet:say', { text, ms }); },
   };
 }
 
-module.exports = { createPetWindow };
+module.exports = { createPetWindow, SPRITE_IDS };
