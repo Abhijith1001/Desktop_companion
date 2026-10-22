@@ -42,13 +42,25 @@ public final class LinkServer {
     private volatile BluetoothSocket client;
     private volatile OutputStream out;
     private Thread acceptThread;
+    private final Object writeLock = new Object();
+    final FileLink files;
+
+    // The running server, for the share screen and notification actions.
+    static volatile LinkServer current;
 
     LinkServer(NotifyService service) {
         this.service = service;
+        this.files = new FileLink(service, this::sendLine);
+    }
+
+    static boolean isConnected() {
+        LinkServer s = current;
+        return s != null && s.client != null;
     }
 
     void start() {
         running = true;
+        current = this;
         acceptThread = new Thread(this::acceptLoop, "buddylink-accept");
         acceptThread.start();
         sender.scheduleWithFixedDelay(this::sendList, HEARTBEAT_S, HEARTBEAT_S, TimeUnit.SECONDS);
@@ -59,6 +71,8 @@ public final class LinkServer {
         closeServer();
         detach(client);
         sender.shutdownNow();
+        files.shutdown();
+        if (current == this) current = null;
         if (acceptThread != null) acceptThread.interrupt();
         status = "Stopped";
     }
@@ -135,12 +149,19 @@ public final class LinkServer {
             }
             sendList();
         });
-        // The computer sends nothing; reading just tells us when it goes away.
+        // The computer sends file-transfer messages; reading also tells us when it goes away.
         Thread reader = new Thread(() -> {
             try {
                 InputStream in = s.getInputStream();
-                byte[] buf = new byte[256];
-                while (in.read(buf) >= 0) { /* ignore */ }
+                java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(in, StandardCharsets.UTF_8), 64 * 1024);
+                String line;
+                while ((line = r.readLine()) != null) {
+                    if (!line.startsWith("{")) continue;
+                    try {
+                        files.handle(new JSONObject(line));
+                    } catch (JSONException ignored) {
+                    }
+                }
             } catch (IOException ignored) {
             }
             detach(s);
@@ -160,15 +181,24 @@ public final class LinkServer {
         }
     }
 
-    private void write(BluetoothSocket s, String line) {
-        OutputStream o = out;
-        if (s != client || o == null) return;
-        try {
-            o.write((line + "\n").getBytes(StandardCharsets.UTF_8));
-            o.flush();
-        } catch (IOException e) {
-            detach(s);
+    private boolean write(BluetoothSocket s, String line) {
+        synchronized (writeLock) {
+            OutputStream o = out;
+            if (s == null || s != client || o == null) return false;
+            try {
+                o.write((line + "\n").getBytes(StandardCharsets.UTF_8));
+                o.flush();
+                return true;
+            } catch (IOException e) {
+                detach(s);
+                return false;
+            }
         }
+    }
+
+    // Used by file transfers (any thread); lines never interleave.
+    boolean sendLine(String line) {
+        return write(client, line);
     }
 
     private synchronized void detach(BluetoothSocket s) {
@@ -177,6 +207,7 @@ public final class LinkServer {
         if (client == s) {
             client = null;
             out = null;
+            files.disconnected();
             if (running) status = "Waiting for the computer";
         }
     }

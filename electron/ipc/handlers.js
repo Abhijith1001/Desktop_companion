@@ -18,6 +18,7 @@ const onboardingCue = z.object({
 // (never a shell), but are still kept to the characters adb itself uses.
 const phoneHost = z.string().regex(/^(?:\d{1,3}\.){3}\d{1,3}$|^[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}$/, 'Enter the IP address shown on the phone');
 const phonePort = z.number().int().min(1).max(65535);
+const transferId = z.string().regex(/^[\w-]{1,64}$/);
 const phoneSerial = z.string().regex(/^\w[\w.:-]{0,127}$/);
 const phonePos = { x: z.number().finite(), y: z.number().finite(), width: z.number().int().min(1).max(8192), height: z.number().int().min(1).max(8192) };
 const phoneInput = z.discriminatedUnion('kind', [
@@ -64,7 +65,7 @@ function calendarRange(list, from, to) {
 
 function createHandlers({
   tasks, settings, engine, sync, pet, info, exportData, confirmDeleteAccount, openExternal, openLogs, previewBuddy,
-  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare, updater, habits, community, phone, phoneNotifications = () => [], phoneBluetooth = () => ({ state: 'off', device: null }), clearPhoneNotifications = () => true,
+  bookmarks, capture, ai, copyText, confirmClearBookmarks, notes, onboarding, progress, weather, buddyCare, updater, habits, community, phone, projects, projectFiles, phoneNotifications = () => [], phoneBluetooth = () => ({ state: 'off', device: null }), phoneFiles = null, clearPhoneNotifications = () => true,
 }) {
   const changed = () => { engine.wake(); sync.notifyLocalChange(); };
 
@@ -188,6 +189,29 @@ function createHandlers({
     'notes:delete': (id) => notes.remove(v.parse(v.id, id)),
     'notes:copy': (id) => { copyText(notes.get(v.parse(v.id, id)).body); return true; },
 
+    // ---- Projects (local only)
+    'projects:list': () => projects.list(),
+    'projects:detail': (id) => projects.detail(v.parse(v.id, id)),
+    'projects:create': (input) => projects.create(v.parse(v.projectInput, input)),
+    'projects:update': (id, patch) => projects.update(v.parse(v.id, id), v.parse(v.projectPatch, patch)),
+    'projects:delete': (id) => projects.remove(v.parse(v.id, id)),
+    'projects:task-add': (pid, input) => projects.addTask(v.parse(v.id, pid), v.parse(v.projectTaskInput, input)),
+    'projects:task-update': (id, patch) => projects.updateTask(v.parse(v.id, id), v.parse(v.projectTaskPatch, patch)),
+    'projects:task-delete': (id) => projects.removeTask(v.parse(v.id, id)),
+    'projects:note-add': (pid, input) => projects.addNote(v.parse(v.id, pid), v.parse(v.noteInput, input ?? {})),
+    'projects:note-update': (id, patch) => projects.updateNote(v.parse(v.id, id), v.parse(v.noteInput, patch)),
+    'projects:note-delete': (id) => projects.removeNote(v.parse(v.id, id)),
+    // File paths never come from the renderer: the main process asks the user.
+    'projects:files-add': async (pid) => {
+      const id = v.parse(v.id, pid);
+      const sources = await projectFiles.pick();
+      return sources.length ? projects.addFiles(id, sources) : { added: [], skipped: [] };
+    },
+    'projects:file-delete': (id) => projects.removeFile(v.parse(v.id, id)),
+    'projects:file-open': (id) => projectFiles.open(projects.filePath(v.parse(v.id, id))),
+    'projects:file-show': (id) => { projectFiles.show(projects.filePath(v.parse(v.id, id))); return true; },
+    'projects:file-preview': (id) => projects.preview(v.parse(v.id, id)),
+
     // ---- Optional AI
     'ai:status': () => ai.status(),
     'ai:set-key': (key) => ai.setKey(key == null ? null : v.parse(v.apiKey, key)),
@@ -237,6 +261,11 @@ function createHandlers({
     'phone:status': () => phone.status(),
     'phone:notifications': () => phoneNotifications(),
     'phone:bt-status': () => phoneBluetooth(),
+    'phone:send-files': (paths) => phoneFiles.send(v.parse(z.array(z.string().min(3).max(1024)).min(1).max(50), paths)),
+    'phone:pick-files': () => phoneFiles.pick(),
+    'phone:transfers': () => phoneFiles.list(),
+    'phone:transfer-cancel': (id) => phoneFiles.cancel(v.parse(transferId, id)),
+    'phone:transfer-show': (id) => phoneFiles.show(v.parse(transferId, id)),
     'phone:notifications-clear': () => clearPhoneNotifications(),
     'phone:devices': () => phone.devices(),
     'phone:discover': () => phone.discover(),

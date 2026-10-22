@@ -6,7 +6,7 @@
 //   strong → normal + a Windows notification + one extra chime after 5 minutes
 // Sound and speech are played once per alert (never looped). An alert stays up
 // until the user acts or alertTimeoutMinutes passes (then it's marked EXPIRED).
-const { Notification, shell } = require('electron');
+const { Notification, shell, globalShortcut } = require('electron');
 const dialogue = require('../dialogue');
 
 const REPEAT_CHIME_MS = 5 * 60_000;
@@ -17,6 +17,20 @@ function createPresenter({ getPet, settings, log, getEngine, openTasks, icon }) 
   let timeoutTimer = null;
   let repeatTimer = null;
   let localId = 0;
+
+  // While a task reminder is up, Space marks it done (global, since the buddy
+  // window usually isn't focused). Released as soon as the alert closes.
+  function bindDoneKey(a) {
+    if (a.kind !== 'task') return;
+    try {
+      globalShortcut.register('Space', () => act(a.alertId, 'done'));
+    } catch (err) {
+      log.warn('space shortcut register failed', { error: err.message });
+    }
+  }
+  function unbindDoneKey() {
+    try { globalShortcut.unregister('Space'); } catch { /* not registered */ }
+  }
 
   const isQueued = (deliveryId) =>
     (current && current.deliveryId === deliveryId) || queue.some((a) => a.deliveryId === deliveryId);
@@ -32,7 +46,7 @@ function createPresenter({ getPet, settings, log, getEngine, openTasks, icon }) 
     if (a.kind === 'task') {
       const label = a.overdue ? 'Overdue' : a.minutesUntil > 0 ? `In ${a.minutesUntil} min` : 'Reminder';
       const buttons = [
-        { action: 'done', label: '✓ Mark done', primary: true },
+        { action: 'done', label: '✓ Mark done (Space)', primary: true },
         { action: 'snooze', label: 'Snooze 5', minutes: 5 },
         { action: 'snooze', label: 'Snooze 10', minutes: 10 },
         { action: 'custom-snooze', label: '…' },
@@ -100,6 +114,7 @@ function createPresenter({ getPet, settings, log, getEngine, openTasks, icon }) 
       if (a.deliveryId) getEngine().fail(a.deliveryId, err.message);
     }
 
+    bindDoneKey(a);
     timeoutTimer = setTimeout(() => act(a.alertId, a.kind === 'task' ? 'expire' : 'ok'), s.alertTimeoutMinutes * 60_000);
   }
 
@@ -111,6 +126,7 @@ function createPresenter({ getPet, settings, log, getEngine, openTasks, icon }) 
   function finish({ celebrate, say }) {
     clearTimeout(timeoutTimer);
     clearTimeout(repeatTimer);
+    unbindDoneKey();
     const pet = getPet();
     if (pet) {
       pet.send('alert:clear');

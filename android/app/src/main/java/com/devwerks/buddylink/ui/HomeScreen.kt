@@ -39,7 +39,7 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun HomeScreen(onOpenLink: () -> Unit, onOpenTasks: () -> Unit, onOpenAccount: () -> Unit) {
+fun HomeScreen(onOpenLink: () -> Unit, onOpenTasks: () -> Unit, onOpenAccount: () -> Unit, onOpenAudio: () -> Unit) {
     val link = rememberLinkStatus()
     val connected = link.startsWith("Connected")
     val endOfToday = endOfToday()
@@ -116,6 +116,20 @@ fun HomeScreen(onOpenLink: () -> Unit, onOpenTasks: () -> Unit, onOpenAccount: (
                 Column(Modifier.weight(1f)) {
                     Text(if (connected) "Linked to your PC" else "PC link", style = MaterialTheme.typography.titleMedium, color = Color.White)
                     Text(link, style = MaterialTheme.typography.bodySmall, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Text("›", style = MaterialTheme.typography.headlineMedium, color = Muted)
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        SendCard(Modifier.padding(horizontal = 16.dp))
+
+        Spacer(Modifier.height(10.dp))
+        BCard(Modifier.padding(horizontal = 16.dp).fillMaxWidth(), onClick = onOpenAudio) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Audio Lab", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    Text("Test: send one app's sound to a chosen device", style = MaterialTheme.typography.bodySmall, color = Muted)
                 }
                 Text("›", style = MaterialTheme.typography.headlineMedium, color = Muted)
             }

@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.devwerks.buddylink.data.Store
 import com.devwerks.buddylink.data.Sync
 import com.devwerks.buddylink.ui.AccountScreen
+import com.devwerks.buddylink.ui.AudioLabScreen
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
 import com.devwerks.buddylink.ui.Bg
@@ -66,6 +67,7 @@ private fun App() {
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
     var showLink by rememberSaveable { mutableStateOf(false) }
     var showAccount by rememberSaveable { mutableStateOf(false) }
+    var showAudio by rememberSaveable { mutableStateOf(false) }
 
     // Stay in step with the desktop while the app is open.
     LaunchedEffect(Sync.email) {
@@ -78,7 +80,7 @@ private fun App() {
     Scaffold(
         containerColor = Bg,
         bottomBar = {
-            if (!showLink && !showAccount) {
+            if (!showLink && !showAccount && !showAudio) {
                 NavigationBar(containerColor = NavBg) {
                     Tab.entries.forEach { t ->
                         NavigationBarItem(
@@ -97,13 +99,15 @@ private fun App() {
         },
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
-            if (showAccount) {
+            if (showAudio) {
+                AudioLabScreen(onBack = { showAudio = false })
+            } else if (showAccount) {
                 AccountScreen(onBack = { showAccount = false })
             } else if (showLink) {
                 LinkScreen(onBack = { showLink = false })
             } else {
                 when (tab) {
-                    Tab.Home -> HomeScreen(onOpenLink = { showLink = true }, onOpenTasks = { tab = Tab.Tasks }, onOpenAccount = { showAccount = true })
+                    Tab.Home -> HomeScreen(onOpenLink = { showLink = true }, onOpenTasks = { tab = Tab.Tasks }, onOpenAccount = { showAccount = true }, onOpenAudio = { showAudio = true })
                     Tab.Tasks -> TasksScreen()
                     Tab.Habits -> HabitsScreen()
                     Tab.Focus -> FocusScreen()

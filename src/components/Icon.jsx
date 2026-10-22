@@ -28,6 +28,7 @@ const PATHS = {
   flag: <><path d="M4 22V4" /><path d="M4 4h12l-2 4 2 4H4" /></>,
   filter: <path d="M3 5h18l-7 8.5V19l-4 2v-7.5Z" />,
   check: <path d="m5 12 4.5 4.5L19 7" />,
+  folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />,
 };
 
 export default function Icon({ name, size = 18, className = '', strokeWidth = 1.75 }) {

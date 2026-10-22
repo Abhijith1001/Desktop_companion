@@ -1,6 +1,6 @@
 // Bridge for the task manager window. Exposes named methods only; the
 // renderer never sees ipcRenderer, Node or the database.
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const invoke = (ch) => (...args) => ipcRenderer.invoke(ch, ...args);
 const on = (ch) => (fn) => {
@@ -104,6 +104,24 @@ contextBridge.exposeInMainWorld('buddy', {
     remove: invoke('notes:delete'),
     copy: invoke('notes:copy'),
   },
+  projects: {
+    list: invoke('projects:list'),
+    detail: invoke('projects:detail'),
+    create: invoke('projects:create'),
+    update: invoke('projects:update'),
+    remove: invoke('projects:delete'),
+    addTask: invoke('projects:task-add'),
+    updateTask: invoke('projects:task-update'),
+    removeTask: invoke('projects:task-delete'),
+    addNote: invoke('projects:note-add'),
+    updateNote: invoke('projects:note-update'),
+    removeNote: invoke('projects:note-delete'),
+    addFiles: invoke('projects:files-add'),
+    removeFile: invoke('projects:file-delete'),
+    openFile: invoke('projects:file-open'),
+    showFile: invoke('projects:file-show'),
+    preview: invoke('projects:file-preview'),
+  },
   ai: {
     status: invoke('ai:status'),
     setKey: invoke('ai:set-key'),
@@ -147,6 +165,14 @@ contextBridge.exposeInMainWorld('buddy', {
     clearNotifications: invoke('phone:notifications-clear'),
     onNotifications: on('phone:notifications'),
     btStatus: invoke('phone:bt-status'),
+    sendFiles: invoke('phone:send-files'),
+    pickFiles: invoke('phone:pick-files'),
+    transfers: invoke('phone:transfers'),
+    cancelTransfer: invoke('phone:transfer-cancel'),
+    showTransfer: invoke('phone:transfer-show'),
+    onTransfers: on('phone:transfers'),
+    // Dropped files → paths on disk (Electron no longer puts them on File).
+    pathForFile: (file) => { try { return webUtils.getPathForFile(file) || null; } catch { return null; } },
     onBt: on('phone:bt'),
   },
   habits: {

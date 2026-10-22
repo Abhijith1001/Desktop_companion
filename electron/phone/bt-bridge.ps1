@@ -115,19 +115,49 @@ public static class BuddyBridge {
   // every 20 s, so 60 s of silence means it's gone.
   static void Session(Socket s, Phone ph) {
     s.ReceiveTimeout = 60000;
+    s.SendTimeout = 60000;
     using (var stream = new NetworkStream(s, true))
     using (var reader = new StreamReader(stream, new UTF8Encoding(false))) {
-      Status("connected", ph.Name, null);
-      Emit("{\"t\":\"device\",\"mac\":\"" + Mac(ph.Addr) + "\"}");
-      string line;
-      while ((line = reader.ReadLine()) != null) {
-        if (line.Length > 0 && line[0] == '{') Emit(line);
+      lock (sendLock) current = stream;
+      try {
+        Status("connected", ph.Name, null);
+        Emit("{\"t\":\"device\",\"mac\":\"" + Mac(ph.Addr) + "\"}");
+        string line;
+        while ((line = reader.ReadLine()) != null) {
+          if (line.Length > 0 && line[0] == '{') Emit(line);
+        }
+      } finally {
+        lock (sendLock) current = null;
       }
     }
   }
 
+  // Lines from the app (file transfers) go to the phone while it's connected.
+  static readonly object sendLock = new object();
+  static NetworkStream current;
+  static void Forward() {
+    var input = new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false));
+    string line;
+    while ((line = input.ReadLine()) != null) {
+      if (line.Length == 0 || line[0] != '{') continue;
+      byte[] bytes = Encoding.UTF8.GetBytes(line + "\n");
+      bool sent = false;
+      lock (sendLock) {
+        if (current != null) {
+          try { current.Write(bytes, 0, bytes.Length); current.Flush(); sent = true; } catch (Exception) { }
+        }
+      }
+      if (!sent) Emit("{\"t\":\"unsent\"}");
+    }
+    // The app closed our input: it's gone, so stop.
+    Environment.Exit(0);
+  }
+
   public static void Run(string prefer) {
     Console.OutputEncoding = new UTF8Encoding(false);
+    var fwd = new Thread(Forward);
+    fwd.IsBackground = true;
+    fwd.Start();
     ulong last = 0;
     if (!string.IsNullOrEmpty(prefer)) { try { last = Convert.ToUInt64(prefer.Replace(":", ""), 16); } catch { } }
     string lastState = null;

@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
-const { app, dialog, ipcMain, shell, powerMonitor, globalShortcut, safeStorage, clipboard, ClipboardItem } = require('electron');
+const { app, dialog, ipcMain, shell, Notification, powerMonitor, globalShortcut, safeStorage, clipboard, ClipboardItem } = require('electron');
 
 const log = require('./logger');
 const { open: openDb, schemaVersion } = require('./database/db');
@@ -13,6 +13,7 @@ const { createProgress } = require('./services/progress');
 const { createUpdater } = require('./services/updater');
 const { createBookmarkService } = require('./services/bookmarks');
 const { createNoteService } = require('./services/notes');
+const { createProjectService } = require('./services/projects');
 const { createAi } = require('./services/ai');
 const { createCapture, normalizeText } = require('./capture');
 const { sensitiveWarnings } = require('./capture/sensitive');
@@ -65,7 +66,7 @@ function start() {
 
   let db; let settings; let tasks; let engine; let sync; let presenter; let pet; let manager; let tray; let phone; let phoneAlerts; let phoneBt;
   let sysmon;
-  let bookmarks; let capture; let ai; let notes; let onboarding; let progress; let life; let updater; let habits; let community; let friends;
+  let bookmarks; let capture; let ai; let notes; let projects; let onboarding; let progress; let life; let updater; let habits; let community; let friends;
 
   const characters = () => {
     const ctx = { window: {} };
@@ -314,6 +315,7 @@ function start() {
     });
     bookmarks = createBookmarkService({ db, onChange: () => manager && manager.send('bookmarks:changed') });
     notes = createNoteService({ db });
+    projects = createProjectService({ db, filesDir: path.join(dataDir, 'project-files') });
     habits = createHabitService({ db });
     community = createCommunity({
       settings, log, appVersion: app.getVersion(),
@@ -385,6 +387,17 @@ function start() {
       log,
       onStatus: (s) => manager.send('phone:bt', s),
       onList: () => phoneAlerts && phoneAlerts.poll(),
+      // Files shared from the phone land in Downloads; the buddy says so.
+      downloadsDir: app.getPath('downloads'),
+      onTransfers: (list) => manager.send('phone:transfers', list),
+      onReceived: ({ name, path: saved }) => {
+        say(`📥 Got ${name} from your phone`, 6000);
+        if (Notification.isSupported()) {
+          const n = new Notification({ title: 'File from your phone', body: `${name} · saved in Downloads`, icon });
+          n.on('click', () => shell.showItemInFolder(saved));
+          n.show();
+        }
+      },
     });
     phoneAlerts = createNotificationWatcher({
       adb: phone.adb, getSerial: phone.readySerial, log, getBluetooth: () => phoneBt.current(),
@@ -419,8 +432,35 @@ function start() {
     // ---- IPC from the task manager window
     const handlers = createHandlers({
       tasks, settings, engine, sync, pet: () => pet, exportData, confirmDeleteAccount, previewBuddy,
-      bookmarks, ai, confirmClearBookmarks, notes, onboarding, progress, updater: () => updater, weather: life.weather, buddyCare: life, habits, community, phone,
+      bookmarks, ai, confirmClearBookmarks, notes, onboarding, progress, updater: () => updater, weather: life.weather, buddyCare: life, habits, community, phone, projects,
+      projectFiles: {
+        pick: async () => {
+          const { canceled, filePaths } = await dialog.showOpenDialog(manager.window, {
+            title: 'Add files to project', properties: ['openFile', 'multiSelections'],
+            filters: [
+              { name: 'All files', extensions: ['*'] },
+              { name: 'Documents', extensions: ['pdf', 'doc', 'docx', 'txt', 'md', 'xls', 'xlsx', 'csv', 'ppt', 'pptx'] },
+              { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'] },
+              { name: 'Videos', extensions: ['mp4', 'webm', 'mov', 'mkv', 'avi'] },
+            ],
+          });
+          return canceled ? [] : filePaths;
+        },
+        open: async (p) => { const err = await shell.openPath(p); if (err) throw new Error(err); return true; },
+        show: (p) => shell.showItemInFolder(p),
+      },
       phoneBluetooth: () => phoneBt.status(),
+      phoneFiles: {
+        send: (paths) => phoneBt.sendFiles(paths),
+        pick: async () => {
+          const r = await dialog.showOpenDialog(manager.window, { title: 'Send to phone', properties: ['openFile', 'multiSelections'] });
+          if (r.canceled || !r.filePaths.length) return false;
+          return phoneBt.sendFiles(r.filePaths);
+        },
+        list: () => phoneBt.transfers(),
+        cancel: (id) => phoneBt.cancelTransfer(id),
+        show: (id) => { const p = phoneBt.savedPath(id); if (p) shell.showItemInFolder(p); return !!p; },
+      },
       phoneNotifications: () => (phoneAlerts ? phoneAlerts.list() : []),
       clearPhoneNotifications: () => (phoneAlerts ? phoneAlerts.clear() : true),
       copyText: (text) => clipboard.writeText(text),

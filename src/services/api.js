@@ -27,6 +27,7 @@ export const api = {
   capture: wrap(bridge.capture),
   ai: wrap(bridge.ai),
   notes: wrap(bridge.notes),
+  projects: wrap(bridge.projects),
   onboarding: wrap(bridge.onboarding),
   app: wrap(bridge.app),
   habits: wrap(bridge.habits),

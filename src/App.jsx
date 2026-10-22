@@ -18,6 +18,7 @@ import ProgressPage from './pages/ProgressPage';
 import PomodoroPage from './pages/PomodoroPage';
 import HabitsPage from './pages/HabitsPage';
 import PhonePage from './pages/PhonePage';
+import ProjectsPage from './pages/ProjectsPage';
 import Confetti from './features/progress/Confetti';
 import AnnouncementBanner from './features/community/AnnouncementBanner';
 import QuickCapture from './features/capture/QuickCapture';
@@ -94,6 +95,8 @@ export default function App() {
   else if (path === '/chat') page = <ChatPage />;
   else if (path === '/notepad') page = <NotepadPage />;
   else if (match('/notepad/:id', path)) page = <NotepadPage selectedId={match('/notepad/:id', path).id} />;
+  else if (path === '/projects') page = <ProjectsPage />;
+  else if (match('/projects/:id', path)) page = <ProjectsPage selectedId={match('/projects/:id', path).id} />;
   else if (path === '/calculator') page = <CalculatorPage />;
   else if (path === '/bookmarks') page = <BookmarksPage />;
   else if (match('/bookmarks/:id', path)) page = <BookmarksPage selectedId={match('/bookmarks/:id', path).id} />;

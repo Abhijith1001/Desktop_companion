@@ -30,6 +30,7 @@ const NAV = [
   { to: '/tasks/view/completed', label: 'Completed', icon: 'checkCircle', count: 'completed' },
   { to: '/tasks/view/all', label: 'All tasks', icon: 'list', count: 'all' },
   { to: '/calendar', label: 'Calendar', icon: 'calendar' },
+  { to: '/projects', label: 'Projects', icon: 'folder' },
   { group: 'Focus' },
   { to: '/habits', label: 'Habits', icon: 'flame' },
   { to: '/pomodoro', label: 'Focus mode', icon: 'timer' },
@@ -61,7 +62,7 @@ export default function Sidebar({ path, open = false, onClose = () => {} }) {
   const accessory = useSettings((s) => s.settings.accessory);
   const sync = useSync((s) => s.status);
   const [feedback, setFeedback] = useState(false);
-  const active = (to) => path === to || (['/bookmarks', '/notepad'].includes(to) && path.startsWith(`${to}/`)) || (to === '/tasks/view/today' && (path === '/tasks' || /^\/tasks\/(?!view)/.test(path)));
+  const active = (to) => path === to || (['/bookmarks', '/notepad', '/projects'].includes(to) && path.startsWith(`${to}/`)) || (to === '/tasks/view/today' && (path === '/tasks' || /^\/tasks\/(?!view)/.test(path)));
   const syncText = sync?.signedIn
     ? (sync.syncing ? 'Syncing…' : sync.lastError ? 'Sync issue' : sync.pending ? `${sync.pending} waiting to sync` : 'Synced')
     : 'Local only';

@@ -64,6 +64,8 @@ public class NotifyService extends NotificationListenerService {
         }
         if (active == null) return list;
         for (StatusBarNotification sbn : active) {
+            // Our own transfer notifications aren't news for the PC.
+            if (getPackageName().equals(sbn.getPackageName()) && "transfer".equals(sbn.getTag())) continue;
             try {
                 list.put(toJson(sbn));
             } catch (JSONException | RuntimeException ignored) {

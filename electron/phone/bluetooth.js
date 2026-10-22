@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { createFileTransfers } = require('./files');
 
 const RESTART_MS = 10_000;
 
@@ -29,8 +30,9 @@ function toRecords(items) {
   }));
 }
 
-// onStatus({ state, device }) on every change; onList() when a new list arrives.
-function createBluetoothLink({ log, onStatus = () => {}, onList = () => {} }) {
+// onStatus({ state, device }) on every change; onList() when a new list arrives;
+// onTransfers(list) / onReceived(file) for file transfers (saved to downloadsDir).
+function createBluetoothLink({ log, onStatus = () => {}, onList = () => {}, downloadsDir = null, onTransfers = () => {}, onReceived = () => {} }) {
   const script = fs.readFileSync(path.join(__dirname, 'bt-bridge.ps1'), 'utf8');
   let child = null;
   let wanted = false;
@@ -40,14 +42,23 @@ function createBluetoothLink({ log, onStatus = () => {}, onList = () => {} }) {
   let mac = null;
   let records = null;
 
+  // Lines for the phone go through the bridge's input.
+  function sendLine(line) {
+    if (!child || status.state !== 'connected' || !child.stdin.writable) return false;
+    child.stdin.write(`${line}\n`);
+    return true;
+  }
+  const files = createFileTransfers({ sendLine, downloadsDir: downloadsDir || require('os').tmpdir(), onUpdate: onTransfers, onReceived, log });
+
   function setStatus(next) {
     status = { ...status, ...next };
     onStatus(status);
   }
 
   function handle(msg) {
+    if (files.handle(msg)) return;
     if (msg.t === 'status') {
-      if (msg.state !== 'connected') records = null;
+      if (msg.state !== 'connected') { records = null; files.disconnected(); }
       setStatus({ state: msg.state, device: msg.state === 'connected' ? (msg.device || model) : null });
       if (msg.error) log.warn('phone bluetooth', { error: String(msg.error).slice(0, 200) });
     } else if (msg.t === 'device') {
@@ -89,10 +100,12 @@ function createBluetoothLink({ log, onStatus = () => {}, onList = () => {} }) {
     child.stderr.on('data', (d) => { err = (err + d).slice(-500); });
     const proc = child;
     proc.on('error', (e) => log.warn('phone bluetooth', { error: e.message }));
+    proc.stdin.on('error', () => { /* bridge exited; handled on exit */ });
     proc.on('exit', (code) => {
       if (child !== proc) return;
       child = null;
       records = null;
+      files.disconnected();
       if (!wanted) return;
       log.warn('phone bluetooth bridge stopped', { code, error: err.trim().slice(0, 300) });
       setStatus({ state: 'searching', device: null });
@@ -110,10 +123,19 @@ function createBluetoothLink({ log, onStatus = () => {}, onList = () => {} }) {
       wanted = false;
       clearTimeout(restartTimer);
       records = null;
+      files.disconnected();
       if (child) { const c = child; child = null; c.kill(); }
       setStatus({ state: 'off', device: null });
     },
     status: () => status,
+    sendFiles: (paths) => {
+      if (status.state !== 'connected') throw new Error("Your phone isn't connected over Bluetooth.");
+      files.sendFiles(paths);
+      return true;
+    },
+    cancelTransfer: (id) => files.cancel(id),
+    transfers: () => files.list(),
+    savedPath: (id) => files.savedPath(id),
     // { id, items } while a phone is connected and has sent its list, else null.
     current: () => (status.state === 'connected' && records ? { id: `bt:${mac || 'phone'}`, items: records } : null),
   };

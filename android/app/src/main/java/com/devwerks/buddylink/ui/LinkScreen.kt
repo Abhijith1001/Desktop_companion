@@ -106,6 +106,9 @@ fun LinkScreen(onBack: () -> Unit) {
             }
         }
 
+        Spacer(Modifier.height(12.dp))
+        SendCard(Modifier.padding(horizontal = 16.dp))
+
         Spacer(Modifier.height(18.dp))
         Text("Setup", style = MaterialTheme.typography.titleLarge, color = Color.White, modifier = Modifier.padding(horizontal = 20.dp))
         Spacer(Modifier.height(8.dp))

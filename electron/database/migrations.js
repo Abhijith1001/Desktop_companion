@@ -177,5 +177,55 @@ module.exports = [
       `);
     },
   },
+  {
+    version: 5,
+    name: 'projects',
+    up(db) {
+      db.exec(`
+        CREATE TABLE projects (
+          id          TEXT PRIMARY KEY,
+          name        TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 200),
+          description TEXT NOT NULL DEFAULT '',
+          color       TEXT NOT NULL DEFAULT '#e8994a',
+          status      TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','on_hold','done')),
+          created_at  TEXT NOT NULL,
+          updated_at  TEXT NOT NULL
+        );
+        CREATE INDEX idx_projects_updated ON projects(updated_at DESC);
+
+        CREATE TABLE project_tasks (
+          id         TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+          title      TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 500),
+          done       INTEGER NOT NULL DEFAULT 0 CHECK (done IN (0,1)),
+          due_date   TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_project_tasks ON project_tasks(project_id, done, created_at);
+
+        CREATE TABLE project_notes (
+          id         TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+          title      TEXT NOT NULL DEFAULT '',
+          body       TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_project_notes ON project_notes(project_id, updated_at DESC);
+
+        CREATE TABLE project_files (
+          id          TEXT PRIMARY KEY,
+          project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+          name        TEXT NOT NULL,
+          stored_name TEXT NOT NULL,
+          kind        TEXT NOT NULL DEFAULT 'other',
+          size        INTEGER NOT NULL DEFAULT 0,
+          created_at  TEXT NOT NULL
+        );
+        CREATE INDEX idx_project_files ON project_files(project_id, created_at DESC);
+      `);
+    },
+  },
 ];
 

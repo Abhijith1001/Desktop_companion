@@ -209,6 +209,26 @@ const habitPatch = z.object({
   sortOrder: z.number().int().min(0),
 }).partial().strict();
 
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Invalid hex color');
+const projectStatus = z.enum(['active', 'on_hold', 'done']);
+const projectInput = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(200),
+  description: z.string().max(5000).default(''),
+  color: hexColor.default('#e8994a'),
+  status: projectStatus.default('active'),
+}).strict();
+const projectPatch = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(200),
+  description: z.string().max(5000),
+  color: hexColor,
+  status: projectStatus,
+}).partial().strict();
+const projectTaskInput = z.object({
+  title: z.string().trim().min(1, 'Task is required').max(500),
+  dueDate: z.string().regex(/^d{4}-d{2}-d{2}$/, 'Use YYYY-MM-DD').nullable().optional(),
+}).strict();
+const projectTaskPatch = projectTaskInput.extend({ done: z.boolean() }).partial().strict();
+
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
 
 const feedbackInput = z.object({
@@ -226,4 +246,5 @@ module.exports = {
   isoDateTime, taskInput, settingsPatch, credentials, id, snoozeMinutes, recurrenceSchema, parse, safeUrl,
   bookmarkInput, bookmarkPatch, bookmarkFilter, droppedText, accelerator, captureSettings, aiRequest, apiKey,
   noteInput, equipInput, weatherQuery, habitInput, habitPatch, isoDate,
+  projectInput, projectPatch, projectTaskInput, projectTaskPatch,
 };

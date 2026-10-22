@@ -353,6 +353,85 @@ function BluetoothCard({ on, bt, onToggle }) {
           <span className="text-stone-500 dark:text-stone-400">· {BT_TEXT[bt.state] || BT_TEXT.searching}</span>
         </div>
       )}
+      {on && <FileShare connected={connected} />}
     </section>
+  );
+}
+
+const fmtSize = (b) => (b < 1024 ? `${b} B` : b < 1048576 ? `${Math.round(b / 1024)} KB` : `${(b / 1048576).toFixed(1)} MB`);
+const TRANSFER_STATE = { done: 'Done', failed: 'Failed', cancelled: 'Cancelled' };
+
+// Send files to the phone (drop or pick) and see what's on the way, both ways.
+// Files shared from the phone ("Share › Desktop Buddy") land in Downloads.
+function FileShare({ connected }) {
+  const toast = useToasts((s) => s.push);
+  const [list, setList] = useState([]);
+  const [over, setOver] = useState(false);
+
+  useEffect(() => {
+    api.phone.transfers().then(setList).catch(() => {});
+    return api.phone.onTransfers(setList);
+  }, []);
+
+  const send = async (fn) => { try { await fn(); } catch (err) { toast(err.message, 'error'); } };
+  const onDrop = (e) => {
+    e.preventDefault();
+    setOver(false);
+    const files = [...e.dataTransfer.files];
+    if (!files.length) return;
+    send(async () => {
+      const paths = (await Promise.all(files.map((f) => api.phone.pathForFile(f)))).filter(Boolean);
+      if (!paths.length) throw new Error("Couldn't read those files. Folders can't be sent; send the files inside them.");
+      await api.phone.sendFiles(paths);
+    });
+  };
+
+  return (
+    <div className="mt-4 border-t border-stone-200 pt-4 dark:border-stone-800">
+      <div
+        onDragOver={(e) => { if (connected) { e.preventDefault(); setOver(true); } }}
+        onDragLeave={() => setOver(false)}
+        onDrop={connected ? onDrop : undefined}
+        className={`flex flex-wrap items-center gap-3 rounded-xl border-2 border-dashed p-4 text-sm transition-colors ${over ? 'border-brand-500 bg-brand-500/10' : 'border-stone-300 dark:border-stone-700'} ${connected ? '' : 'opacity-60'}`}
+      >
+        <Icon name="phone" size={20} />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{connected ? 'Drop files here to send them to your phone' : 'Connect your phone to share files'}</p>
+          <p className="text-xs text-stone-500 dark:text-stone-400">
+            From the phone: Share › Desktop Buddy. Files land in your Downloads folder. Bluetooth is best for photos and documents (about 20 s for a 3 MB photo).
+          </p>
+        </div>
+        <button type="button" className="btn-outline" disabled={!connected} onClick={() => send(() => api.phone.pickFiles())}>Choose files…</button>
+      </div>
+      {list.length > 0 && (
+        <ul className="mt-3 divide-y divide-stone-200 dark:divide-stone-800">
+          {list.map((t) => {
+            const pct = t.size ? Math.min(100, Math.round((t.done / t.size) * 100)) : 0;
+            return (
+              <li key={t.id} className="flex items-center gap-3 py-2 text-sm">
+                <span className="w-5 text-center" title={t.dir === 'in' ? 'From phone' : 'To phone'}>{t.dir === 'in' ? '📥' : '📤'}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{t.name}</p>
+                  {t.state === 'active' ? (
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-800">
+                        <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">{pct}% · {fmtSize(t.done)} of {fmtSize(t.size)}</span>
+                    </div>
+                  ) : (
+                    <p className={`text-xs ${t.state === 'done' ? 'text-emerald-600' : 'text-stone-500 dark:text-stone-400'}`}>
+                      {TRANSFER_STATE[t.state]}{t.state === 'done' ? ` · ${fmtSize(t.size)}` : t.error ? ` · ${t.error}` : ''}
+                    </p>
+                  )}
+                </div>
+                {t.state === 'active' && <button type="button" className="btn-ghost" onClick={() => send(() => api.phone.cancelTransfer(t.id))}>Cancel</button>}
+                {t.saved && <button type="button" className="btn-ghost" onClick={() => send(() => api.phone.showTransfer(t.id))}>Show in folder</button>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
