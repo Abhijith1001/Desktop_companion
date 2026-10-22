@@ -1,7 +1,7 @@
 {
   "name": "desktop-companion",
   "productName": "Desktop Buddy",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "A desktop pet companion with a task manager that walks onto your screen to remind you.",
   "main": "electron/main.js",
   "scripts": {
